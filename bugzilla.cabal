@@ -18,8 +18,9 @@ cabal-version:       >=1.10
 
 library
   ghc-options:         -Wall
-  exposed-modules:     Web.Bugzilla
-  -- other-modules:       
+  exposed-modules:     Web.Bugzilla,
+                       Web.Bugzilla.Search
+  other-modules:       Web.Bugzilla.Internal
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.7,
                        aeson,
@@ -30,6 +31,7 @@ library
                        data-default,
                        http-conduit,
                        http-types,
+                       iso8601-time,
                        resourcet,
                        text,
                        time,
@@ -43,6 +45,7 @@ executable test-bugzilla
   main-is:             TestBugzilla.hs
   build-depends:       base >=4.6 && <4.7,
                        bugzilla,
+                       containers,
                        text
   hs-source-dirs:      tests
   default-language:    Haskell2010
