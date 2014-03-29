@@ -46,7 +46,7 @@ data BugField
   | BugFieldIsOpen
   | BugFieldKeywords
   | BugFieldLastChangeTime
-  | BugFieldOpSys
+  | BugFieldOperatingSystem
   | BugFieldPlatform
   | BugFieldPriority
   | BugFieldProduct
@@ -69,7 +69,7 @@ standardBugFields = S.fromList
    BugFieldClassification, BugFieldComponent, BugFieldCreationTime, BugFieldCreator, BugFieldCreatorDetail,
    BugFieldDependsOn, BugFieldDupeOf, BugFieldFlags, BugFieldGroups, BugFieldId, BugFieldIsCcAccessible,
    BugFieldIsConfirmed, BugFieldIsCreatorAccessible, BugFieldIsOpen, BugFieldKeywords, BugFieldLastChangeTime,
-   BugFieldOpSys, BugFieldPlatform, BugFieldPriority, BugFieldProduct, BugFieldQaContact, BugFieldResolution,
+   BugFieldOperatingSystem, BugFieldPlatform, BugFieldPriority, BugFieldProduct, BugFieldQaContact, BugFieldResolution,
    BugFieldSeeAlso, BugFieldSeverity, BugFieldStatus, BugFieldSummary, BugFieldTargetMilestone, BugFieldUrl,
    BugFieldVersion, BugFieldWhiteboard]
 
@@ -96,7 +96,7 @@ bugFieldName BugFieldIsCreatorAccessible   = "is_creator_accessible"
 bugFieldName BugFieldIsOpen                = "is_open"
 bugFieldName BugFieldKeywords              = "keywords"
 bugFieldName BugFieldLastChangeTime        = "last_change_time"
-bugFieldName BugFieldOpSys                 = "op_sys"
+bugFieldName BugFieldOperatingSystem                 = "op_sys"
 bugFieldName BugFieldPlatform              = "platform"
 bugFieldName BugFieldPriority              = "priority"
 bugFieldName BugFieldProduct               = "product"
@@ -114,95 +114,95 @@ bugFieldName (CustomBugField name) = name
 
 
 data SearchField
-  = Alias                  -- Alias
-  | AssignedTo             -- Assignee
-  | AttachmentsSubmitter   -- Attachment creator
-  | AttachmentsData        -- Attachment data
-  | AttachmentsDescription -- Attachment description
-  | AttachmentsFilename    -- Attachment filename
-  | AttachmentsIsObsolete  -- Attachment is obsolete
-  | AttachmentsIsPatch     -- Attachment is patch
-  | AttachmentsIsPrivate   -- Attachment is private
-  | AttachmentsMimetype    -- Attachment mime type
-  | Blocked                -- Blocks
-  | BugId                  -- Bug ID
-  | Cc                     -- CC
-  | CcListAccessible       -- CC list accessible
-  | Classification         -- Classification
-  | Longdesc               -- Comment
-  | LongdescsIsPrivate     -- Comment is private
-  | CommentTag             -- Comment Tag
-  | Commenter              -- Commenter
-  | Component              -- Component
-  | Content                -- Content
-  | CreationTs             -- Creation date
-  | DaysElapsed            -- Days since bug changed
-  | Dependson              -- Depends on
-  | EverConfirmed          -- Ever confirmed
-  | RequesteesLoginName    -- Flag Requestee
-  | SettersLoginName       -- Flag Setter
-  | FlagTypesName          -- Flags
-  | BugGroup               -- Group
-  | Keywords               -- Keywords
-  | DeltaTs                -- Changed
-  | LongdescsCount         -- Number of Comments
-  | OpSys                  -- OS
-  | RepPlatform            -- Hardware
-  | Priority               -- Priority
-  | Product                -- Product
-  | QaContact              -- QA Contact
-  | Reporter               -- Reporter
-  | ReporterAccessible     -- Reporter accessible
-  | Resolution             -- Resolution
-  | RestrictComments       -- Restrict Comments
-  | SeeAlso                -- See Also
-  | BugSeverity            -- Severity
-  | BugStatus              -- Status
-  | StatusWhiteboard       -- Whiteboard
-  | ShortDesc              -- Summary
-  | Tag                    -- Tags
-  | TargetMilestone        -- Target Milestone
-  | OwnerIdleTime          -- Time Since Assignee Touched
-  | BugFileLoc             -- URL
-  | Version                -- Version
-  | Votes                  -- Votes
+  = Alias                    -- Alias
+  | AssignedTo               -- Assignee
+  | AttachmentCreator        -- Attachment creator
+  | AttachmentData           -- Attachment data
+  | AttachmentDescription    -- Attachment description
+  | AttachmentFilename       -- Attachment filename
+  | AttachmentIsObsolete     -- Attachment is obsolete
+  | AttachmentIsPatch        -- Attachment is patch
+  | AttachmentIsPrivate      -- Attachment is private
+  | AttachmentMimetype       -- Attachment mime type
+  | Blocks                   -- Blocks
+  | BugId                    -- Bug ID
+  | Cc                       -- CC
+  | CcListAccessible         -- CC list accessible
+  | Classification           -- Classification
+  | Comment                  -- Comment
+  | CommentIsPrivate         -- Comment is private
+  | CommentTags              -- Comment Tags
+  | Commenter                -- Commenter
+  | Component                -- Component
+  | Content                  -- Content
+  | CreationDate             -- Creation date
+  | DaysElapsed              -- Days since bug changed
+  | DependsOn                -- Depends on
+  | EverConfirmed            -- Ever confirmed
+  | FlagRequestee            -- Flag Requestee
+  | FlagSetter               -- Flag Setter
+  | Flags                    -- Flags
+  | Group                    -- Group
+  | Keywords                 -- Keywords
+  | Changed                  -- Changed
+  | CommentCount             -- Number of Comments
+  | OperatingSystem          -- OS
+  | Hardware                 -- Hardware
+  | Priority                 -- Priority
+  | Product                  -- Product
+  | QaContact                -- QA Contact
+  | Reporter                 -- Reporter
+  | ReporterAccessible       -- Reporter accessible
+  | Resolution               -- Resolution
+  | RestrictComments         -- Restrict Comments
+  | SeeAlso                  -- See Also
+  | Severity                 -- Severity
+  | Status                   -- Status
+  | Whiteboard               -- Whiteboard
+  | Summary                  -- Summary
+  | Tags                     -- Tags
+  | TargetMilestone          -- Target Milestone
+  | TimeSinceAssigneeTouched -- Time Since Assignee Touched
+  | BugURL                   -- URL
+  | Version                  -- Version
+  | Votes                    -- Votes
     deriving (Bounded, Enum, Eq, Ord, Show)
 
 searchFieldName :: SearchField -> T.Text
 searchFieldName Alias = "alias"
 searchFieldName AssignedTo = "assigned_to"
-searchFieldName AttachmentsSubmitter = "attachments.submitter"
-searchFieldName AttachmentsData = "attach_data.thedata"
-searchFieldName AttachmentsDescription = "attachments.description"
-searchFieldName AttachmentsFilename = "attachments.filename"
-searchFieldName AttachmentsIsObsolete = "attachments.isobsolete"
-searchFieldName AttachmentsIsPatch = "attachments.ispatch"
-searchFieldName AttachmentsIsPrivate = "attachments.isprivate"
-searchFieldName AttachmentsMimetype = "attachments.mimetype"
-searchFieldName Blocked = "blocked"
+searchFieldName AttachmentCreator = "attachments.submitter"
+searchFieldName AttachmentData = "attach_data.thedata"
+searchFieldName AttachmentDescription = "attachments.description"
+searchFieldName AttachmentFilename = "attachments.filename"
+searchFieldName AttachmentIsObsolete = "attachments.isobsolete"
+searchFieldName AttachmentIsPatch = "attachments.ispatch"
+searchFieldName AttachmentIsPrivate = "attachments.isprivate"
+searchFieldName AttachmentMimetype = "attachments.mimetype"
+searchFieldName Blocks = "blocked"
 searchFieldName BugId = "bug_id"
 searchFieldName Cc = "cc"
 searchFieldName CcListAccessible = "cclist_accessible"
 searchFieldName Classification = "classification"
-searchFieldName Longdesc = "longdesc"
-searchFieldName LongdescsIsPrivate = "longdescs.isprivate"
-searchFieldName CommentTag = "comment_tag"
+searchFieldName Comment = "longdesc"
+searchFieldName CommentIsPrivate = "longdescs.isprivate"
+searchFieldName CommentTags = "comment_tag"
 searchFieldName Commenter = "commenter"
 searchFieldName Component = "component"
 searchFieldName Content = "content"
-searchFieldName CreationTs = "creation_ts"
+searchFieldName CreationDate = "creation_ts"
 searchFieldName DaysElapsed = "days_elapsed"
-searchFieldName Dependson = "dependson"
+searchFieldName DependsOn = "dependson"
 searchFieldName EverConfirmed = "everconfirmed"
-searchFieldName RequesteesLoginName = "requestees.login_name"
-searchFieldName SettersLoginName = "setters.login_name"
-searchFieldName FlagTypesName = "flagtypes.name"
-searchFieldName BugGroup = "bug_group"
+searchFieldName FlagRequestee = "requestees.login_name"
+searchFieldName FlagSetter = "setters.login_name"
+searchFieldName Flags = "flagtypes.name"
+searchFieldName Group = "bug_group"
 searchFieldName Keywords = "keywords"
-searchFieldName DeltaTs = "delta_ts"
-searchFieldName LongdescsCount = "longdescs.count"
-searchFieldName OpSys = "op_sys"
-searchFieldName RepPlatform = "rep_platform"
+searchFieldName Changed = "delta_ts"
+searchFieldName CommentCount = "longdescs.count"
+searchFieldName OperatingSystem = "op_sys"
+searchFieldName Hardware = "rep_platform"
 searchFieldName Priority = "priority"
 searchFieldName Product = "product"
 searchFieldName QaContact = "qa_contact"
@@ -211,14 +211,14 @@ searchFieldName ReporterAccessible = "reporter_accessible"
 searchFieldName Resolution = "resolution"
 searchFieldName RestrictComments = "restrict_comments"
 searchFieldName SeeAlso = "see_also"
-searchFieldName BugSeverity = "bug_severity"
-searchFieldName BugStatus = "bug_status"
-searchFieldName StatusWhiteboard = "status_whiteboard"
-searchFieldName ShortDesc = "short_desc"
-searchFieldName Tag = "tag"
+searchFieldName Severity = "bug_severity"
+searchFieldName Status = "bug_status"
+searchFieldName Whiteboard = "status_whiteboard"
+searchFieldName Summary = "short_desc"
+searchFieldName Tags = "tag"
 searchFieldName TargetMilestone = "target_milestone"
-searchFieldName OwnerIdleTime = "owner_idle_time"
-searchFieldName BugFileLoc = "bug_file_loc"
+searchFieldName TimeSinceAssigneeTouched = "owner_idle_time"
+searchFieldName BugURL = "bug_file_loc"
 searchFieldName Version = "version"
 searchFieldName Votes = "votes"
 
