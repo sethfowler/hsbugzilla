@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Data.Text.Lazy.IO (putStrLn)
-import Prelude hiding (putStrLn)
-
 import Web.Bugzilla
 
 main :: IO ()
-main = putStrLn =<< assignedTo "bugzilla.mozilla.org" "seth@mozilla.com"
+main = withBzContext "bugzilla.mozilla.org" $ \ctx -> do
+  bugs <- assignedTo ctx standardBugFields "seth@mozilla.com"
+  mapM_ print bugs

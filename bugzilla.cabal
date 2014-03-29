@@ -23,11 +23,18 @@ library
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.7,
                        aeson,
+                       blaze-builder,
+                       bytestring,
                        connection,
+                       containers,
+                       data-default,
                        http-conduit,
+                       http-types,
                        resourcet,
                        text,
-                       transformers
+                       time,
+                       transformers,
+                       unordered-containers
   hs-source-dirs:      src
   default-language:    Haskell2010
 
