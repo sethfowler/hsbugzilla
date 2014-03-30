@@ -88,40 +88,40 @@ instance FromJSON Flag where
 data Bug = Bug
   { bugId                  :: !BzBugId
   , bugAlias               :: Maybe T.Text
-  , bugAssignedTo          :: Maybe BzUserEmail
-  , bugAssignedToDetail    :: Maybe User
-  , bugBlocks              :: Maybe [BzBugId]
-  , bugCc                  :: Maybe [BzUserEmail]
-  , bugCcDetail            :: Maybe [User]
-  , bugClassification      :: Maybe T.Text
-  , bugComponent           :: Maybe T.Text
-  , bugCreationTime        :: Maybe UTCTime
-  , bugCreator             :: Maybe BzUserEmail
-  , bugCreatorDetail       :: Maybe User
-  , bugDependsOn           :: Maybe [BzBugId]
+  , bugAssignedTo          :: BzUserEmail
+  , bugAssignedToDetail    :: User
+  , bugBlocks              :: [BzBugId]
+  , bugCc                  :: [BzUserEmail]
+  , bugCcDetail            :: [User]
+  , bugClassification      :: T.Text
+  , bugComponent           :: T.Text
+  , bugCreationTime        :: UTCTime
+  , bugCreator             :: BzUserEmail
+  , bugCreatorDetail       :: User
+  , bugDependsOn           :: [BzBugId]
   , bugDupeOf              :: Maybe BzBugId
-  , bugFlags               :: Maybe [Flag]
-  , bugGroups              :: Maybe [T.Text]
-  , bugIsCcAccessible      :: Maybe Bool
-  , bugIsConfirmed         :: Maybe Bool
-  , bugIsCreatorAccessible :: Maybe Bool
-  , bugIsOpen              :: Maybe Bool
-  , bugKeywords            :: Maybe [T.Text]
-  , bugLastChangeTime      :: Maybe UTCTime
-  , bugOpSys               :: Maybe T.Text
-  , bugPlatform            :: Maybe T.Text
-  , bugPriority            :: Maybe T.Text
-  , bugProduct             :: Maybe T.Text
-  , bugQaContact           :: Maybe BzUserEmail
-  , bugResolution          :: Maybe T.Text
-  , bugSeeAlso             :: Maybe [T.Text]
-  , bugSeverity            :: Maybe T.Text
-  , bugStatus              :: Maybe T.Text
-  , bugSummary             :: Maybe T.Text
-  , bugTargetMilestone     :: Maybe T.Text
-  , bugUrl                 :: Maybe T.Text
-  , bugVersion             :: Maybe T.Text
-  , bugWhiteboard          :: Maybe T.Text
+  , bugFlags               :: [Flag]
+  , bugGroups              :: [T.Text]
+  , bugIsCcAccessible      :: Bool
+  , bugIsConfirmed         :: Bool
+  , bugIsCreatorAccessible :: Bool
+  , bugIsOpen              :: Bool
+  , bugKeywords            :: [T.Text]
+  , bugLastChangeTime      :: UTCTime
+  , bugOpSys               :: T.Text
+  , bugPlatform            :: T.Text
+  , bugPriority            :: T.Text
+  , bugProduct             :: T.Text
+  , bugQaContact           :: BzUserEmail
+  , bugResolution          :: T.Text
+  , bugSeeAlso             :: [T.Text]
+  , bugSeverity            :: T.Text
+  , bugStatus              :: T.Text
+  , bugSummary             :: T.Text
+  , bugTargetMilestone     :: T.Text
+  , bugUrl                 :: T.Text
+  , bugVersion             :: T.Text
+  , bugWhiteboard          :: T.Text
   , bugCustomFields        :: H.HashMap T.Text T.Text
   } deriving (Eq, Show)
 
@@ -129,40 +129,40 @@ instance FromJSON Bug where
   parseJSON (Object v) =
       Bug <$> v .:  "id"
           <*> v .:? "alias"
-          <*> v .:? "assigned_to"
-          <*> v .:? "assigned_to_detail"
-          <*> v .:? "blocks"
-          <*> v .:? "cc"
-          <*> v .:? "cc_detail"
-          <*> v .:? "classification"
-          <*> v .:? "component"
-          <*> v .:? "creation_time"
-          <*> v .:? "creator"
-          <*> v .:? "creator_detail"
-          <*> v .:? "depends_on"
+          <*> v .: "assigned_to"
+          <*> v .: "assigned_to_detail"
+          <*> v .: "blocks"
+          <*> v .: "cc"
+          <*> v .: "cc_detail"
+          <*> v .: "classification"
+          <*> v .: "component"
+          <*> v .: "creation_time"
+          <*> v .: "creator"
+          <*> v .: "creator_detail"
+          <*> v .: "depends_on"
           <*> v .:? "dupe_of"
-          <*> v .:? "flags"
-          <*> v .:? "groups"
-          <*> v .:? "is_cc_accessible"
-          <*> v .:? "is_confirmed"
-          <*> v .:? "is_creator_accessible"
-          <*> v .:? "is_open"
-          <*> v .:? "keywords"
-          <*> v .:? "last_change_time"
-          <*> v .:? "op_sys"
-          <*> v .:? "platform"
-          <*> v .:? "priority"
-          <*> v .:? "product"
-          <*> v .:? "qa_contact"
-          <*> v .:? "resolution"
-          <*> v .:? "see_also"
-          <*> v .:? "severity"
-          <*> v .:? "status"
-          <*> v .:? "summary"
-          <*> v .:? "target_milestone"
-          <*> v .:? "url"
-          <*> v .:? "version"
-          <*> v .:? "whiteboard"
+          <*> v .: "flags"
+          <*> v .: "groups"
+          <*> v .: "is_cc_accessible"
+          <*> v .: "is_confirmed"
+          <*> v .: "is_creator_accessible"
+          <*> v .: "is_open"
+          <*> v .: "keywords"
+          <*> v .: "last_change_time"
+          <*> v .: "op_sys"
+          <*> v .: "platform"
+          <*> v .: "priority"
+          <*> v .: "product"
+          <*> v .: "qa_contact"
+          <*> v .: "resolution"
+          <*> v .: "see_also"
+          <*> v .: "severity"
+          <*> v .: "status"
+          <*> v .: "summary"
+          <*> v .: "target_milestone"
+          <*> v .: "url"
+          <*> v .: "version"
+          <*> v .: "whiteboard"
           <*> pure (customFields v)
   parseJSON _ = mzero
 

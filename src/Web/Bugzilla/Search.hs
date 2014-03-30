@@ -2,11 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.Bugzilla.Search
-( BugField (..)
-, standardBugFields
-, SearchField (..)
+( SearchField (..)
 , SearchTerm (..)
-, SearchExprItem
+, Searchable
 , SearchExpr (..)
 , (.&&.)
 , (.||.)
@@ -19,114 +17,21 @@ module Web.Bugzilla.Search
 , (.=~.)
 , (./=~.)
 , contains
-, notE
+, not'
 , searchBugs
+, searchBugsWithLimit
 ) where
 
 import Control.Applicative
-import Control.Exception (throw)
 import Control.Monad (MonadPlus, mzero)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Resource (runResourceT)
 import Data.Aeson
 import Data.List
-import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime(..))
 import Data.Time.ISO8601 (formatISO8601)
-import Network.HTTP.Conduit (Request(..), Response(..), httpLbs)
 
 import Web.Bugzilla
 import Web.Bugzilla.Internal
-
-data BugField
-  = BugFieldAlias
-  | BugFieldAssignedTo
-  | BugFieldAssignedToDetail
-  | BugFieldBlocks
-  | BugFieldCc
-  | BugFieldCcDetail
-  | BugFieldClassification
-  | BugFieldComponent
-  | BugFieldCreationTime
-  | BugFieldCreator
-  | BugFieldCreatorDetail
-  | BugFieldDependsOn
-  | BugFieldDupeOf
-  | BugFieldFlags
-  | BugFieldGroups
-  | BugFieldId
-  | BugFieldIsCcAccessible
-  | BugFieldIsConfirmed
-  | BugFieldIsCreatorAccessible
-  | BugFieldIsOpen
-  | BugFieldKeywords
-  | BugFieldLastChangeTime
-  | BugFieldOperatingSystem
-  | BugFieldPlatform
-  | BugFieldPriority
-  | BugFieldProduct
-  | BugFieldQaContact
-  | BugFieldResolution
-  | BugFieldSeeAlso
-  | BugFieldSeverity
-  | BugFieldStatus
-  | BugFieldSummary
-  | BugFieldTargetMilestone
-  | BugFieldUrl
-  | BugFieldVersion
-  | BugFieldWhiteboard
-  | CustomBugField T.Text
-    deriving (Eq, Ord, Show)
-
-standardBugFields :: S.Set BugField
-standardBugFields = S.fromList
-  [BugFieldAlias, BugFieldAssignedTo, BugFieldAssignedToDetail, BugFieldBlocks, BugFieldCc, BugFieldCcDetail,
-   BugFieldClassification, BugFieldComponent, BugFieldCreationTime, BugFieldCreator, BugFieldCreatorDetail,
-   BugFieldDependsOn, BugFieldDupeOf, BugFieldFlags, BugFieldGroups, BugFieldId, BugFieldIsCcAccessible,
-   BugFieldIsConfirmed, BugFieldIsCreatorAccessible, BugFieldIsOpen, BugFieldKeywords, BugFieldLastChangeTime,
-   BugFieldOperatingSystem, BugFieldPlatform, BugFieldPriority, BugFieldProduct, BugFieldQaContact, BugFieldResolution,
-   BugFieldSeeAlso, BugFieldSeverity, BugFieldStatus, BugFieldSummary, BugFieldTargetMilestone, BugFieldUrl,
-   BugFieldVersion, BugFieldWhiteboard]
-
-bugFieldName :: BugField -> T.Text
-bugFieldName BugFieldAlias                 = "alias"
-bugFieldName BugFieldAssignedTo            = "assigned_to"
-bugFieldName BugFieldAssignedToDetail      = "assigned_to_detail"
-bugFieldName BugFieldBlocks                = "blocks"
-bugFieldName BugFieldCc                    = "cc"
-bugFieldName BugFieldCcDetail              = "cc_detail"
-bugFieldName BugFieldClassification        = "classification"
-bugFieldName BugFieldComponent             = "component"
-bugFieldName BugFieldCreationTime          = "creation_time"
-bugFieldName BugFieldCreator               = "creator"
-bugFieldName BugFieldCreatorDetail         = "creator_detail"
-bugFieldName BugFieldDependsOn             = "depends_on"
-bugFieldName BugFieldDupeOf                = "dupe_of"
-bugFieldName BugFieldFlags                 = "flags"
-bugFieldName BugFieldGroups                = "groups"
-bugFieldName BugFieldId                    = "id"
-bugFieldName BugFieldIsCcAccessible        = "is_cc_accessible"
-bugFieldName BugFieldIsConfirmed           = "is_confirmed"
-bugFieldName BugFieldIsCreatorAccessible   = "is_creator_accessible"
-bugFieldName BugFieldIsOpen                = "is_open"
-bugFieldName BugFieldKeywords              = "keywords"
-bugFieldName BugFieldLastChangeTime        = "last_change_time"
-bugFieldName BugFieldOperatingSystem                 = "op_sys"
-bugFieldName BugFieldPlatform              = "platform"
-bugFieldName BugFieldPriority              = "priority"
-bugFieldName BugFieldProduct               = "product"
-bugFieldName BugFieldQaContact             = "qa_contact"
-bugFieldName BugFieldResolution            = "resolution"
-bugFieldName BugFieldSeeAlso               = "see_also"
-bugFieldName BugFieldSeverity              = "severity"
-bugFieldName BugFieldStatus                = "status"
-bugFieldName BugFieldSummary               = "summary"
-bugFieldName BugFieldTargetMilestone       = "target_milestone"
-bugFieldName BugFieldUrl                   = "url"
-bugFieldName BugFieldVersion               = "version"
-bugFieldName BugFieldWhiteboard            = "whiteboard"
-bugFieldName (CustomBugField name) = name
 
 class FieldValue a where fvAsText :: a -> T.Text
 instance FieldValue T.Text where fvAsText = id
@@ -312,21 +217,20 @@ data SearchExpr
   | Not SearchExpr
   | Term SearchTerm
 
-class SearchExprItem a where asSearchExpr :: a -> SearchExpr
-instance SearchExprItem SearchExpr where asSearchExpr = id
-instance SearchExprItem SearchTerm where asSearchExpr = Term
+class Searchable a where asSearchExpr :: a -> SearchExpr
+instance Searchable SearchExpr where asSearchExpr = id
+instance Searchable SearchTerm where asSearchExpr = Term
 
-(.&&.) :: (SearchExprItem a, SearchExprItem b) => a -> b -> SearchExpr
+(.&&.) :: (Searchable a, Searchable b) => a -> b -> SearchExpr
 (.&&.) a b = And [asSearchExpr a, asSearchExpr b]
 infixr 3 .&&.
 
-(.||.) :: (SearchExprItem a, SearchExprItem b) => a -> b -> SearchExpr
+(.||.) :: (Searchable a, Searchable b) => a -> b -> SearchExpr
 (.||.) a b = Or [asSearchExpr a, asSearchExpr b]
 infixr 2 .||.
 
-notE :: SearchExprItem a => a -> SearchExpr
-notE a = Not . asSearchExpr $ a
-infix 4 `notE`
+not' :: Searchable a => a -> SearchExpr
+not' a = Not . asSearchExpr $ a
 
 taggedQueryPart :: Int -> Char -> T.Text -> QueryPart
 taggedQueryPart t k v = (T.cons k . T.pack . show $ t, Just v)
@@ -395,10 +299,6 @@ evalSearchExpr e = snd $ evalSearchExpr' 1 e
 
     evalSearchExpr' t (Term term) = (t + 1, evalSearchTerm t term)
 
-includeFields :: S.Set BugField -> QueryPart
-includeFields fields = ("include_fields", Just $ names fields)
-  where names = T.intercalate "," . map bugFieldName . S.toList
-
 data SearchResult = SearchResult [Bug]
                     deriving (Eq, Show)
 
@@ -406,18 +306,20 @@ instance FromJSON SearchResult where
   parseJSON (Object v) = SearchResult <$> v .: "bugs"
   parseJSON _          = mzero
   
-bzSearchBugsRequest :: BzContext -> S.Set BugField -> SearchExpr -> Request
-bzSearchBugsRequest ctx include search = bzRequest ctx ["bug"] $ is : qs
-  where
-    is = includeFields $ BugFieldId `S.insert` include
-    qs = evalSearchExpr search
+searchBugs :: Searchable a => BzContext -> a -> IO [Bug]
+searchBugs ctx search = do
+  let searchQuery = evalSearchExpr . asSearchExpr $ search
+      req = newBzRequest ctx ["bug"] searchQuery
+  print $ requestUrl req
+  (SearchResult bugs) <- sendBzRequest ctx req
+  return bugs
 
-searchBugs :: SearchExprItem a => BzContext -> S.Set BugField -> a -> IO [Bug]
-searchBugs ctx fields search = runResourceT $ do
-  let req = bzSearchBugsRequest ctx fields (asSearchExpr search)
-  liftIO $ print $ requestUrl req
-  response <- liftIO $ httpLbs req (bzManager ctx)
-  let mResult = eitherDecode $ responseBody response
-  case mResult of
-    Left msg                  -> throw $ BugzillaException $ "JSON parse error: " ++ msg
-    Right (SearchResult bugs) -> return bugs
+searchBugsWithLimit :: Searchable a => BzContext -> Int -> Int -> a -> IO [Bug]
+searchBugsWithLimit ctx limit offset search = do
+  let limitQuery = [("limit", Just $ fvAsText limit),
+                    ("offset", Just $ fvAsText offset)]
+      searchQuery = evalSearchExpr . asSearchExpr $ search
+      req = newBzRequest ctx ["bug"] (limitQuery ++ searchQuery)
+  print $ requestUrl req
+  (SearchResult bugs) <- sendBzRequest ctx req
+  return bugs
