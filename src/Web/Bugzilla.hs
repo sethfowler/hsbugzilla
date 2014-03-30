@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.Bugzilla
-( BugzillaException (..)
+( BzException (..)
 , BzContext
 , newBzContext
 , closeBzContext
@@ -11,6 +11,9 @@ module Web.Bugzilla
 , User (..)
 , Flag (..)
 , Bug (..)
+, BzSession (..)
+, loginSession
+, anonymousSession
 ) where
 
 import Control.Applicative
@@ -29,11 +32,11 @@ import Network.HTTP.Conduit (mkManagerSettings, newManager, closeManager)
 
 import Web.Bugzilla.Internal
 
-type BzBugId       = Int
-type BzUserEmailId = Int
-type BzFlagId      = Int
-type BzFlagType    = Int
-type BzUserEmail   = T.Text
+type BzBugId     = Int
+type BzUserId    = Int
+type BzFlagId    = Int
+type BzFlagType  = Int
+type BzUserEmail = T.Text
 
 newBzContext :: BzServer -> IO BzContext
 newBzContext server = do
@@ -48,7 +51,7 @@ withBzContext :: BzServer -> (BzContext -> IO a) -> IO a
 withBzContext server f = bracket (newBzContext server) closeBzContext f
 
 data User = User
-  { userId       :: !BzUserEmailId
+  { userId       :: !BzUserId
   , userEmail    :: T.Text
   , userName     :: T.Text
   , userRealName :: T.Text
@@ -180,3 +183,22 @@ customFields = H.map stringifyCustomFields
                                      $ v
 
     filterCustomFields k _ = "cf_" `T.isPrefixOf` k
+
+-- Remaining features:
+--  * Comments
+--  * Attachments
+--  * History
+-- With those implemented, work on the Snap site can start.
+
+loginSession :: BzContext -> BzUserEmail -> T.Text -> IO BzSession
+loginSession ctx user password = do
+  let loginQuery = [("login", Just user),
+                    ("password", Just password)]
+      session = anonymousSession ctx
+      req = newBzRequest session ["login"] loginQuery
+  print $ requestUrl req
+  token <- sendBzRequest session req
+  return $ LoginSession ctx token
+
+anonymousSession :: BzContext -> BzSession
+anonymousSession ctx = AnonymousSession ctx

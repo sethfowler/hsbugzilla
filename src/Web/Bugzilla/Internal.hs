@@ -5,7 +5,9 @@ module Web.Bugzilla.Internal
 ( QueryPart
 , BzServer
 , BzContext (..)
-, BugzillaException (..)
+, BzToken
+, BzSession (..)
+, BzException (..)
 , Request
 , requestUrl
 , newBzRequest
@@ -13,11 +15,14 @@ module Web.Bugzilla.Internal
 ) where
 
 import Blaze.ByteString.Builder (toByteString)
+import Control.Applicative
 import Control.Exception (Exception, throw)
+import Control.Monad (mzero)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (runResourceT)
 import Data.Aeson
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import Data.Default (def)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
@@ -34,9 +39,24 @@ data BzContext = BzContext
   , bzManager :: Manager
   }
 
-data BugzillaException = BugzillaException String
-  deriving (Show, Typeable)
-instance Exception BugzillaException
+data BzToken = BzToken T.Text
+
+instance FromJSON BzToken where
+  parseJSON (Object v) = BzToken <$> v .: "token"
+  parseJSON _          = mzero
+
+data BzSession = AnonymousSession BzContext
+               | LoginSession BzContext BzToken
+
+bzContext :: BzSession -> BzContext
+bzContext (AnonymousSession ctx) = ctx
+bzContext (LoginSession ctx _)   = ctx
+
+data BzException
+  = BzJSONParseException String
+  | BzAPIError Int String
+    deriving (Show, Typeable)
+instance Exception BzException
 
 requestUrl :: Request -> B.ByteString
 requestUrl req = "https://" <> host req <> path req <> queryString req
@@ -48,18 +68,33 @@ sslRequest =
     port   = 443
   }
 
-newBzRequest :: BzContext -> [T.Text] -> QueryText -> Request
-newBzRequest ctx methodParts query =
+newBzRequest :: BzSession -> [T.Text] -> QueryText -> Request
+newBzRequest session methodParts query =
   sslRequest {
-    host        = TE.encodeUtf8 $ bzServer ctx,
+    host        = TE.encodeUtf8 . bzServer . bzContext $ session,
     path        = toByteString $ encodePathSegments $ "rest" : methodParts,
     queryString = toByteString $ renderQueryText True query
   }
 
-sendBzRequest :: FromJSON a => BzContext -> Request -> IO a
-sendBzRequest ctx req = runResourceT $ do
-  response <- liftIO $ httpLbs req (bzManager ctx)
+data BzError = BzError Int String
+               deriving (Eq, Show)
+
+instance FromJSON BzError where
+  parseJSON (Object v) = BzError <$> v .: "code"
+                                 <*> v .: "message"
+  parseJSON _          = mzero
+
+handleError :: String -> BL.ByteString -> IO b
+handleError parseError body = do
+  let mError = eitherDecode body
+  case mError of
+    Left _                   -> throw $ BzJSONParseException parseError
+    Right (BzError code msg) -> throw $ BzAPIError code msg
+
+sendBzRequest :: FromJSON a => BzSession -> Request -> IO a
+sendBzRequest session req = runResourceT $ do
+  response <- liftIO $ httpLbs req . bzManager . bzContext $ session
   let mResult = eitherDecode $ responseBody response
   case mResult of
-    Left msg      -> throw $ BugzillaException $ "JSON parse error: " ++ msg
+    Left msg      -> liftIO $ handleError msg (responseBody response)
     Right decoded -> return decoded

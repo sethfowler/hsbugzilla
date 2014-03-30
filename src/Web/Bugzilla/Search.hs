@@ -306,20 +306,20 @@ instance FromJSON SearchResult where
   parseJSON (Object v) = SearchResult <$> v .: "bugs"
   parseJSON _          = mzero
   
-searchBugs :: Searchable a => BzContext -> a -> IO [Bug]
-searchBugs ctx search = do
+searchBugs :: Searchable a => BzSession -> a -> IO [Bug]
+searchBugs session search = do
   let searchQuery = evalSearchExpr . asSearchExpr $ search
-      req = newBzRequest ctx ["bug"] searchQuery
+      req = newBzRequest session ["bug"] searchQuery
   print $ requestUrl req
-  (SearchResult bugs) <- sendBzRequest ctx req
+  (SearchResult bugs) <- sendBzRequest session req
   return bugs
 
-searchBugsWithLimit :: Searchable a => BzContext -> Int -> Int -> a -> IO [Bug]
-searchBugsWithLimit ctx limit offset search = do
+searchBugsWithLimit :: Searchable a => BzSession -> Int -> Int -> a -> IO [Bug]
+searchBugsWithLimit session limit offset search = do
   let limitQuery = [("limit", Just $ fvAsText limit),
                     ("offset", Just $ fvAsText offset)]
       searchQuery = evalSearchExpr . asSearchExpr $ search
-      req = newBzRequest ctx ["bug"] (limitQuery ++ searchQuery)
+      req = newBzRequest session ["bug"] (limitQuery ++ searchQuery)
   print $ requestUrl req
-  (SearchResult bugs) <- sendBzRequest ctx req
+  (SearchResult bugs) <- sendBzRequest session req
   return bugs
