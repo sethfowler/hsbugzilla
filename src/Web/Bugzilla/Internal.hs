@@ -53,8 +53,9 @@ bzContext (AnonymousSession ctx) = ctx
 bzContext (LoginSession ctx _)   = ctx
 
 data BzException
-  = BzJSONParseException String
+  = BzJSONParseFailure String
   | BzAPIError Int String
+  | BzUnexpectedValue String
     deriving (Show, Typeable)
 instance Exception BzException
 
@@ -70,11 +71,15 @@ sslRequest =
 
 newBzRequest :: BzSession -> [T.Text] -> QueryText -> Request
 newBzRequest session methodParts query =
-  sslRequest {
-    host        = TE.encodeUtf8 . bzServer . bzContext $ session,
-    path        = toByteString $ encodePathSegments $ "rest" : methodParts,
-    queryString = toByteString $ renderQueryText True query
-  }
+    sslRequest {
+      host        = TE.encodeUtf8 . bzServer . bzContext $ session,
+      path        = toByteString $ encodePathSegments $ "rest" : methodParts,
+      queryString = toByteString $ renderQueryText True queryWithToken
+    }
+  where
+    queryWithToken = case session of
+                       AnonymousSession _             -> query
+                       LoginSession _ (BzToken token) -> ("token", Just token) : query
 
 data BzError = BzError Int String
                deriving (Eq, Show)
@@ -88,7 +93,7 @@ handleError :: String -> BL.ByteString -> IO b
 handleError parseError body = do
   let mError = eitherDecode body
   case mError of
-    Left _                   -> throw $ BzJSONParseException parseError
+    Left _                   -> throw $ BzJSONParseFailure parseError
     Right (BzError code msg) -> throw $ BzAPIError code msg
 
 sendBzRequest :: FromJSON a => BzSession -> Request -> IO a

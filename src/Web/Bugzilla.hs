@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Web.Bugzilla
 ( BzException (..)
@@ -11,13 +12,19 @@ module Web.Bugzilla
 , User (..)
 , Flag (..)
 , Bug (..)
+, BugList (..)
+, Attachment (..)
+, AttachmentList (..)
 , BzSession (..)
 , loginSession
 , anonymousSession
+, getBug
+, getAttachment
+, getAttachments
 ) where
 
 import Control.Applicative
-import Control.Exception (bracket)
+import Control.Exception (bracket, throw, try)
 import Control.Monad (MonadPlus, mzero)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -32,11 +39,12 @@ import Network.HTTP.Conduit (mkManagerSettings, newManager, closeManager)
 
 import Web.Bugzilla.Internal
 
-type BzBugId     = Int
-type BzUserId    = Int
-type BzFlagId    = Int
-type BzFlagType  = Int
-type BzUserEmail = T.Text
+type BzBugId        = Int
+type BzAttachmentId = Int
+type BzUserId       = Int
+type BzFlagId       = Int
+type BzFlagType     = Int
+type BzUserEmail    = T.Text
 
 newBzContext :: BzServer -> IO BzContext
 newBzContext server = do
@@ -184,21 +192,112 @@ customFields = H.map stringifyCustomFields
 
     filterCustomFields k _ = "cf_" `T.isPrefixOf` k
 
+data BugList = BugList [Bug]
+               deriving (Eq, Show)
+
+instance FromJSON BugList where
+  parseJSON (Object v) = BugList <$> v .: "bugs"
+  parseJSON _          = mzero
+
+data Attachment = Attachment
+  { attachmentId             :: !BzAttachmentId
+  , attachmentBugId          :: !BzBugId
+  , attachmentFileName       :: T.Text
+  , attachmentSummary        :: T.Text
+  , attachmentCreator        :: BzUserEmail
+  , attachmentIsPrivate      :: Bool
+  , attachmentIsObsolete     :: Bool
+  , attachmentIsPatch        :: Bool
+  , attachmentFlags          :: [Flag]
+  , attachmentCreationTime   :: UTCTime
+  , attachmentLastChangeTime :: UTCTime
+  , attachmentContentType    :: T.Text
+  , attachmentSize           :: !Int
+  , attachmentData           :: T.Text
+  } deriving (Eq, Show)
+
+instance FromJSON Attachment where
+  parseJSON (Object v) = do
+    Attachment <$> v .: "id"
+               <*> v .: "bug_id"
+               <*> v .: "file_name"
+               <*> v .: "summary"
+               <*> v .: "creator"
+               <*> (fromNumericBool <$> v .: "is_private")
+               <*> (fromNumericBool <$> v .: "is_obsolete")
+               <*> (fromNumericBool <$> v .: "is_patch")
+               <*> v .: "flags"
+               <*> v .: "creation_time"
+               <*> v .: "last_change_time"
+               <*> v .: "content_type"
+               <*> v .: "size"
+               <*> v .: "data"
+  parseJSON _ = mzero
+
+fromNumericBool :: Int -> Bool
+fromNumericBool 0 = False
+fromNumericBool _ = True
+
+data AttachmentList = AttachmentList [Attachment]
+                      deriving (Eq, Show)
+
+instance FromJSON AttachmentList where
+  parseJSON (Object v) = do
+    attachmentsVal <- v .: "attachments"
+    bugsVal <- v .: "bugs"
+    case (attachmentsVal, bugsVal) of
+      (Object (H.toList -> [(_, as)]), _) -> AttachmentList . (:[]) <$> parseJSON as
+      (_, Object (H.toList -> [(_, as)])) -> AttachmentList <$> parseJSON as
+      _                                   -> mzero
+  parseJSON _ = mzero
+
 -- Remaining features:
 --  * Comments
---  * Attachments
 --  * History
 -- With those implemented, work on the Snap site can start.
 
-loginSession :: BzContext -> BzUserEmail -> T.Text -> IO BzSession
+loginSession :: BzContext -> BzUserEmail -> T.Text -> IO (Maybe BzSession)
 loginSession ctx user password = do
   let loginQuery = [("login", Just user),
                     ("password", Just password)]
       session = anonymousSession ctx
       req = newBzRequest session ["login"] loginQuery
   print $ requestUrl req
-  token <- sendBzRequest session req
-  return $ LoginSession ctx token
+  eToken <- try $ sendBzRequest session req
+  return $ case eToken of
+             Left (BzAPIError 300 _) -> Nothing
+             Left e                  -> throw e
+             Right token             -> Just $ LoginSession ctx token
 
 anonymousSession :: BzContext -> BzSession
 anonymousSession ctx = AnonymousSession ctx
+
+idAsText :: Int -> T.Text
+idAsText = T.pack . show
+
+getBug :: BzSession -> BzBugId -> IO (Maybe Bug)
+getBug session bid = do
+  let req = newBzRequest session ["bug", idAsText bid] []
+  print $ requestUrl req
+  (BugList bugs) <- sendBzRequest session req
+  case bugs of
+    [bug] -> return $ Just bug
+    []    -> return Nothing
+    _     -> throw $ BzUnexpectedValue "Request for a single bug returned multiple bugs"
+
+getAttachment :: BzSession -> BzAttachmentId -> IO (Maybe Attachment)
+getAttachment session aid = do
+  let req = newBzRequest session ["bug", "attachment", idAsText aid] []
+  print $ requestUrl req
+  (AttachmentList as) <- sendBzRequest session req
+  case as of
+    [a] -> return $ Just a
+    []  -> return Nothing
+    _   -> throw $ BzUnexpectedValue "Request for a single attachment returned multiple attachments"
+  
+getAttachments :: BzSession -> BzBugId -> IO [Attachment]
+getAttachments session bid = do
+  let req = newBzRequest session ["bug", idAsText bid, "attachment"] []
+  print $ requestUrl req
+  (AttachmentList as) <- sendBzRequest session req
+  return as

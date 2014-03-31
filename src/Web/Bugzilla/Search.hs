@@ -31,9 +31,6 @@ module Web.Bugzilla.Search
 , searchBugsWithLimit
 ) where
 
-import Control.Applicative
-import Control.Monad (MonadPlus, mzero)
-import Data.Aeson
 import Data.List
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime(..))
@@ -295,19 +292,12 @@ evalSearchExpr e = snd $ evalSearchExpr' 1 e
 
     evalSearchExpr' t (Term term) = (t + 1, evalSearchTerm t term)
 
-data SearchResult = SearchResult [Bug]
-                    deriving (Eq, Show)
-
-instance FromJSON SearchResult where
-  parseJSON (Object v) = SearchResult <$> v .: "bugs"
-  parseJSON _          = mzero
-  
 searchBugs :: BzSession -> SearchExpr -> IO [Bug]
 searchBugs session search = do
   let searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] searchQuery
   print $ requestUrl req
-  (SearchResult bugs) <- sendBzRequest session req
+  (BugList bugs) <- sendBzRequest session req
   return bugs
 
 searchBugsWithLimit :: BzSession -> Int -> Int -> SearchExpr -> IO [Bug]
@@ -317,5 +307,5 @@ searchBugsWithLimit session limit offset search = do
       searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] (limitQuery ++ searchQuery)
   print $ requestUrl req
-  (SearchResult bugs) <- sendBzRequest session req
+  (BugList bugs) <- sendBzRequest session req
   return bugs
