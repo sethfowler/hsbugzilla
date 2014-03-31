@@ -14,13 +14,14 @@ module Web.Bugzilla
 , Bug (..)
 , BugList (..)
 , Attachment (..)
-, AttachmentList (..)
+, Comment (..)
 , BzSession (..)
 , loginSession
 , anonymousSession
 , getBug
 , getAttachment
 , getAttachments
+, getComments
 ) where
 
 import Control.Applicative
@@ -33,6 +34,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import qualified Data.Vector as V
 import Data.Time.Clock (UTCTime(..))
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Conduit (mkManagerSettings, newManager, closeManager)
@@ -41,6 +43,7 @@ import Web.Bugzilla.Internal
 
 type BzBugId        = Int
 type BzAttachmentId = Int
+type BzCommentId    = Int
 type BzUserId       = Int
 type BzFlagId       = Int
 type BzFlagType     = Int
@@ -251,10 +254,51 @@ instance FromJSON AttachmentList where
       _                                   -> mzero
   parseJSON _ = mzero
 
--- Remaining features:
---  * Comments
---  * History
--- With those implemented, work on the Snap site can start.
+data Comment = Comment
+  { commentId           :: !BzCommentId
+  , commentBugId        :: !BzBugId
+  , commentAttachmentId :: Maybe BzAttachmentId
+  , commentCount        :: !Int
+  , commentText         :: T.Text
+  , commentCreator      :: BzUserEmail
+  , commentCreationTime :: UTCTime
+  , commentIsPrivate    :: Bool
+  } deriving (Eq, Show)
+
+instance FromJSON Comment where
+  parseJSON (Object v) = do
+    Comment <$> v .: "id"
+            <*> v .: "bug_id"
+            <*> v .: "attachment_id"
+            <*> v .: "count"
+            <*> v .: "text"
+            <*> v .: "creator"
+            <*> v .: "creation_time"
+            <*> v .: "is_private"
+  parseJSON _ = mzero
+
+data CommentList = CommentList [Comment]
+                   deriving (Eq, Show)
+
+instance FromJSON CommentList where
+  parseJSON (Object v) = do
+    bugsVal <- v .: "bugs"
+    case bugsVal of
+      Object (H.toList -> [(_, cs)]) ->
+        do comments <- withObject "comments" (.: "comments") cs
+           withArray "comment list" (\a -> CommentList <$> parseJSON (addCount a)) comments
+      _ -> mzero
+  parseJSON _ = mzero
+
+-- Note that we make the (possibly unwise) assumption that Bugzilla
+-- returns the comments in order. If it turns out that's not true, we
+-- can always sort by their 'id' to ensure correct results.
+addCount :: V.Vector Value -> Value 
+addCount vs = Array $ V.zipWith addCount' (V.enumFromN 0 $ V.length vs) vs
+ where
+   addCount' :: Int -> Value -> Value
+   addCount' c (Object v) = Object $ H.insert "count" (Number $ fromIntegral c) v
+   addCount' _ v          = v
 
 loginSession :: BzContext -> BzUserEmail -> T.Text -> IO (Maybe BzSession)
 loginSession ctx user password = do
@@ -301,3 +345,15 @@ getAttachments session bid = do
   print $ requestUrl req
   (AttachmentList as) <- sendBzRequest session req
   return as
+
+getComments :: BzSession -> BzBugId -> IO [Comment]
+getComments session bid = do
+  let req = newBzRequest session ["bug", idAsText bid, "comment"] []
+  print $ requestUrl req
+  (CommentList as) <- sendBzRequest session req
+  return as
+
+-- Remaining features:
+--  * History
+-- With those implemented, work on the Snap site can start.
+

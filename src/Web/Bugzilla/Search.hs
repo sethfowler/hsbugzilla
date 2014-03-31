@@ -53,112 +53,112 @@ instance FieldType a => FieldType [a] where
   fvAsText = T.intercalate "," . map fvAsText
 
 data SearchField a where
-  Alias                    :: SearchField T.Text      -- Alias
-  AssignedTo               :: SearchField BzUserEmail -- Assignee
-  AttachmentCreator        :: SearchField BzUserEmail -- Attachment creator
-  AttachmentData           :: SearchField T.Text      -- Attachment data
-  AttachmentDescription    :: SearchField T.Text      -- Attachment description
-  AttachmentFilename       :: SearchField T.Text      -- Attachment filename
-  AttachmentIsObsolete     :: SearchField Bool        -- Attachment is obsolete
-  AttachmentIsPatch        :: SearchField Bool        -- Attachment is patch
-  AttachmentIsPrivate      :: SearchField Bool        -- Attachment is private
-  AttachmentMimetype       :: SearchField T.Text      -- Attachment mime type
-  Blocks                   :: SearchField Int         -- Blocks
-  BugId                    :: SearchField Int         -- Bug ID
-  Cc                       :: SearchField BzUserEmail -- CC
-  CcListAccessible         :: SearchField Bool        -- CC list accessible
-  Classification           :: SearchField T.Text      -- Classification
-  Comment                  :: SearchField T.Text      -- Comment
-  CommentIsPrivate         :: SearchField T.Text      -- Comment is private
-  CommentTags              :: SearchField T.Text      -- Comment Tags
-  Commenter                :: SearchField BzUserEmail -- Commenter
-  Component                :: SearchField T.Text      -- Component
-  Content                  :: SearchField T.Text      -- Content
-  CreationDate             :: SearchField UTCTime     -- Creation date
-  DaysElapsed              :: SearchField Int         -- Days since bug changed
-  DependsOn                :: SearchField Int         -- Depends on
-  EverConfirmed            :: SearchField Bool        -- Ever confirmed
-  FlagRequestee            :: SearchField BzUserEmail -- Flag Requestee
-  FlagSetter               :: SearchField BzUserEmail -- Flag Setter
-  Flags                    :: SearchField T.Text      -- Flags
-  Group                    :: SearchField T.Text      -- Group
-  Keywords                 :: SearchField T.Text      -- Keywords
-  Changed                  :: SearchField UTCTime     -- Changed
-  CommentCount             :: SearchField Int         -- Number of Comments
-  OperatingSystem          :: SearchField T.Text      -- OS
-  Hardware                 :: SearchField T.Text      -- Hardware
-  Priority                 :: SearchField T.Text      -- Priority
-  Product                  :: SearchField T.Text      -- Product
-  QaContact                :: SearchField BzUserEmail -- QA Contact
-  Reporter                 :: SearchField BzUserEmail -- Reporter
-  ReporterAccessible       :: SearchField Bool        -- Reporter accessible
-  Resolution               :: SearchField T.Text      -- Resolution
-  RestrictComments         :: SearchField Bool        -- Restrict Comments
-  SeeAlso                  :: SearchField T.Text      -- See Also
-  Severity                 :: SearchField T.Text      -- Severity
-  Status                   :: SearchField T.Text      -- Status
-  Whiteboard               :: SearchField T.Text      -- Whiteboard
-  Summary                  :: SearchField T.Text      -- Summary
-  Tags                     :: SearchField T.Text      -- Tags
-  TargetMilestone          :: SearchField T.Text      -- Target Milestone
-  TimeSinceAssigneeTouched :: SearchField Int         -- Time Since Assignee Touched
-  BugURL                   :: SearchField T.Text      -- URL
-  Version                  :: SearchField T.Text      -- Version
-  Votes                    :: SearchField T.Text      -- Votes
+  AliasField                    :: SearchField T.Text      -- Alias
+  AssignedToField               :: SearchField BzUserEmail -- Assignee
+  AttachmentCreatorField        :: SearchField BzUserEmail -- Attachment creator
+  AttachmentDataField           :: SearchField T.Text      -- Attachment data
+  AttachmentDescriptionField    :: SearchField T.Text      -- Attachment description
+  AttachmentFilenameField       :: SearchField T.Text      -- Attachment filename
+  AttachmentIsObsoleteField     :: SearchField Bool        -- Attachment is obsolete
+  AttachmentIsPatchField        :: SearchField Bool        -- Attachment is patch
+  AttachmentIsPrivateField      :: SearchField Bool        -- Attachment is private
+  AttachmentMimetypeField       :: SearchField T.Text      -- Attachment mime type
+  BlocksField                   :: SearchField Int         -- Blocks
+  BugIdField                    :: SearchField Int         -- Bug ID
+  CcField                       :: SearchField BzUserEmail -- CC
+  CcListAccessibleField         :: SearchField Bool        -- CC list accessible
+  ClassificationField           :: SearchField T.Text      -- Classification
+  CommentField                  :: SearchField T.Text      -- Comment
+  CommentIsPrivateField         :: SearchField T.Text      -- Comment is private
+  CommentTagsField              :: SearchField T.Text      -- Comment Tags
+  CommenterField                :: SearchField BzUserEmail -- Commenter
+  ComponentField                :: SearchField T.Text      -- Component
+  ContentField                  :: SearchField T.Text      -- Content
+  CreationDateField             :: SearchField UTCTime     -- Creation date
+  DaysElapsedField              :: SearchField Int         -- Days since bug changed
+  DependsOnField                :: SearchField Int         -- Depends on
+  EverConfirmedField            :: SearchField Bool        -- Ever confirmed
+  FlagRequesteeField            :: SearchField BzUserEmail -- Flag Requestee
+  FlagSetterField               :: SearchField BzUserEmail -- Flag Setter
+  FlagsField                    :: SearchField T.Text      -- Flags
+  GroupField                    :: SearchField T.Text      -- Group
+  KeywordsField                 :: SearchField T.Text      -- Keywords
+  ChangedField                  :: SearchField UTCTime     -- Changed
+  CommentCountField             :: SearchField Int         -- Number of Comments
+  OperatingSystemField          :: SearchField T.Text      -- OS
+  HardwareField                 :: SearchField T.Text      -- Hardware
+  PriorityField                 :: SearchField T.Text      -- Priority
+  ProductField                  :: SearchField T.Text      -- Product
+  QaContactField                :: SearchField BzUserEmail -- QA Contact
+  ReporterField                 :: SearchField BzUserEmail -- Reporter
+  ReporterAccessibleField       :: SearchField Bool        -- Reporter accessible
+  ResolutionField               :: SearchField T.Text      -- Resolution
+  RestrictCommentsField         :: SearchField Bool        -- Restrict Comments
+  SeeAlsoField                  :: SearchField T.Text      -- See Also
+  SeverityField                 :: SearchField T.Text      -- Severity
+  StatusField                   :: SearchField T.Text      -- Status
+  WhiteboardField               :: SearchField T.Text      -- Whiteboard
+  SummaryField                  :: SearchField T.Text      -- Summary
+  TagsField                     :: SearchField T.Text      -- Tags
+  TargetMilestoneField          :: SearchField T.Text      -- Target Milestone
+  TimeSinceAssigneeTouchedField :: SearchField Int         -- Time Since Assignee Touched
+  BugURLField                   :: SearchField T.Text      -- URL
+  VersionField                  :: SearchField T.Text      -- Version
+  VotesField                    :: SearchField T.Text      -- Votes
 
 searchFieldName :: SearchField a -> T.Text
-searchFieldName Alias                    = "alias"
-searchFieldName AssignedTo               = "assigned_to"
-searchFieldName AttachmentCreator        = "attachments.submitter"
-searchFieldName AttachmentData           = "attach_data.thedata"
-searchFieldName AttachmentDescription    = "attachments.description"
-searchFieldName AttachmentFilename       = "attachments.filename"
-searchFieldName AttachmentIsObsolete     = "attachments.isobsolete"
-searchFieldName AttachmentIsPatch        = "attachments.ispatch"
-searchFieldName AttachmentIsPrivate      = "attachments.isprivate"
-searchFieldName AttachmentMimetype       = "attachments.mimetype"
-searchFieldName Blocks                   = "blocked"
-searchFieldName BugId                    = "bug_id"
-searchFieldName Cc                       = "cc"
-searchFieldName CcListAccessible         = "cclist_accessible"
-searchFieldName Classification           = "classification"
-searchFieldName Comment                  = "longdesc"
-searchFieldName CommentIsPrivate         = "longdescs.isprivate"
-searchFieldName CommentTags              = "comment_tag"
-searchFieldName Commenter                = "commenter"
-searchFieldName Component                = "component"
-searchFieldName Content                  = "content"
-searchFieldName CreationDate             = "creation_ts"
-searchFieldName DaysElapsed              = "days_elapsed"
-searchFieldName DependsOn                = "dependson"
-searchFieldName EverConfirmed            = "everconfirmed"
-searchFieldName FlagRequestee            = "requestees.login_name"
-searchFieldName FlagSetter               = "setters.login_name"
-searchFieldName Flags                    = "flagtypes.name"
-searchFieldName Group                    = "bug_group"
-searchFieldName Keywords                 = "keywords"
-searchFieldName Changed                  = "delta_ts"
-searchFieldName CommentCount             = "longdescs.count"
-searchFieldName OperatingSystem          = "op_sys"
-searchFieldName Hardware                 = "rep_platform"
-searchFieldName Priority                 = "priority"
-searchFieldName Product                  = "product"
-searchFieldName QaContact                = "qa_contact"
-searchFieldName Reporter                 = "reporter"
-searchFieldName ReporterAccessible       = "reporter_accessible"
-searchFieldName Resolution               = "resolution"
-searchFieldName RestrictComments         = "restrict_comments"
-searchFieldName SeeAlso                  = "see_also"
-searchFieldName Severity                 = "bug_severity"
-searchFieldName Status                   = "bug_status"
-searchFieldName Whiteboard               = "status_whiteboard"
-searchFieldName Summary                  = "short_desc"
-searchFieldName Tags                     = "tag"
-searchFieldName TargetMilestone          = "target_milestone"
-searchFieldName TimeSinceAssigneeTouched = "owner_idle_time"
-searchFieldName BugURL                   = "bug_file_loc"
-searchFieldName Version                  = "version"
-searchFieldName Votes                    = "votes"
+searchFieldName AliasField                    = "alias"
+searchFieldName AssignedToField               = "assigned_to"
+searchFieldName AttachmentCreatorField        = "attachments.submitter"
+searchFieldName AttachmentDataField           = "attach_data.thedata"
+searchFieldName AttachmentDescriptionField    = "attachments.description"
+searchFieldName AttachmentFilenameField       = "attachments.filename"
+searchFieldName AttachmentIsObsoleteField     = "attachments.isobsolete"
+searchFieldName AttachmentIsPatchField        = "attachments.ispatch"
+searchFieldName AttachmentIsPrivateField      = "attachments.isprivate"
+searchFieldName AttachmentMimetypeField       = "attachments.mimetype"
+searchFieldName BlocksField                   = "blocked"
+searchFieldName BugIdField                    = "bug_id"
+searchFieldName CcField                       = "cc"
+searchFieldName CcListAccessibleField         = "cclist_accessible"
+searchFieldName ClassificationField           = "classification"
+searchFieldName CommentField                  = "longdesc"
+searchFieldName CommentIsPrivateField         = "longdescs.isprivate"
+searchFieldName CommentTagsField              = "comment_tag"
+searchFieldName CommenterField                = "commenter"
+searchFieldName ComponentField                = "component"
+searchFieldName ContentField                  = "content"
+searchFieldName CreationDateField             = "creation_ts"
+searchFieldName DaysElapsedField              = "days_elapsed"
+searchFieldName DependsOnField                = "dependson"
+searchFieldName EverConfirmedField            = "everconfirmed"
+searchFieldName FlagRequesteeField            = "requestees.login_name"
+searchFieldName FlagSetterField               = "setters.login_name"
+searchFieldName FlagsField                    = "flagtypes.name"
+searchFieldName GroupField                    = "bug_group"
+searchFieldName KeywordsField                 = "keywords"
+searchFieldName ChangedField                  = "delta_ts"
+searchFieldName CommentCountField             = "longdescs.count"
+searchFieldName OperatingSystemField          = "op_sys"
+searchFieldName HardwareField                 = "rep_platform"
+searchFieldName PriorityField                 = "priority"
+searchFieldName ProductField                  = "product"
+searchFieldName QaContactField                = "qa_contact"
+searchFieldName ReporterField                 = "reporter"
+searchFieldName ReporterAccessibleField       = "reporter_accessible"
+searchFieldName ResolutionField               = "resolution"
+searchFieldName RestrictCommentsField         = "restrict_comments"
+searchFieldName SeeAlsoField                  = "see_also"
+searchFieldName SeverityField                 = "bug_severity"
+searchFieldName StatusField                   = "bug_status"
+searchFieldName WhiteboardField               = "status_whiteboard"
+searchFieldName SummaryField                  = "short_desc"
+searchFieldName TagsField                     = "tag"
+searchFieldName TargetMilestoneField          = "target_milestone"
+searchFieldName TimeSinceAssigneeTouchedField = "owner_idle_time"
+searchFieldName BugURLField                   = "bug_file_loc"
+searchFieldName VersionField                  = "version"
+searchFieldName VotesField                    = "votes"
 
 data SearchTerm where
   UnaryOp  :: FieldType a => T.Text -> SearchField a -> SearchTerm
@@ -225,7 +225,7 @@ changedBy :: FieldType a => SearchField a -> BzUserEmail -> SearchExpr
 changedBy = (Term .) . BinaryOp "changedby"
 
 contentMatches :: T.Text -> SearchExpr
-contentMatches = Term . BinaryOp "matches" Content
+contentMatches = Term . BinaryOp "matches" ContentField
 
 isEmpty :: FieldType a => SearchField a -> SearchExpr
 isEmpty = Term . UnaryOp "isempty"

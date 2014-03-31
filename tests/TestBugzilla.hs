@@ -20,11 +20,11 @@ main = withBzContext "bugzilla.mozilla.org" $ \ctx -> do
 
 runTest :: BzSession -> T.Text -> IO ()
 runTest session user = do
-  --let search = AssignedTo .==. user
+  --let search = AssignedToField .==. user
   {-
-  let search = FlagRequestee .==. user .&&. Flags `contains` "needinfo"
+  let search = FlagRequesteeField .==. user .&&. Flags `contains` "needinfo"
   bugs <- searchBugs session search
   mapM_ print bugs
   -}
-  as <- getAttachment session 8397620
-  print as
+  cs <- getComments session 35168
+  print cs
