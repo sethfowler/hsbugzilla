@@ -3,11 +3,7 @@
 
 module Web.Bugzilla.Search
 ( SearchField (..)
-, SearchTerm (..)
-, Searchable
-, SearchExpr (..)
-, (.&&.)
-, (.||.)
+, SearchExpr
 , (.==.)
 , (./=.)
 , (.<.)
@@ -16,7 +12,20 @@ module Web.Bugzilla.Search
 , (.>=.)
 , (.=~.)
 , (./=~.)
+, equalsAny
 , contains
+, containsCase
+, containsAny
+, containsAll
+, changedBefore
+, changedAfter
+, changedFrom
+, changedTo
+, changedBy
+, contentMatches
+, isEmpty
+, (.&&.)
+, (.||.)
 , not'
 , searchBugs
 , searchBugsWithLimit
@@ -33,13 +42,18 @@ import Data.Time.ISO8601 (formatISO8601)
 import Web.Bugzilla
 import Web.Bugzilla.Internal
 
-class FieldValue a where fvAsText :: a -> T.Text
-instance FieldValue T.Text where fvAsText = id
-instance FieldValue Int where fvAsText = T.pack . show
-instance FieldValue UTCTime where fvAsText = T.pack . formatISO8601
-instance FieldValue Bool where
+class FieldType a where fvAsText :: a -> T.Text
+
+instance FieldType T.Text where fvAsText = id
+instance FieldType Int where fvAsText = T.pack . show
+instance FieldType UTCTime where fvAsText = T.pack . formatISO8601
+
+instance FieldType Bool where
   fvAsText True  = "true"
   fvAsText False = "false"
+
+instance FieldType a => FieldType [a] where
+  fvAsText = T.intercalate "," . map fvAsText
 
 data SearchField a where
   Alias                    :: SearchField T.Text      -- Alias
@@ -150,66 +164,74 @@ searchFieldName Version                  = "version"
 searchFieldName Votes                    = "votes"
 
 data SearchTerm where
-  Equals                     :: FieldValue a => SearchField a -> a -> SearchTerm
-  NotEquals                  :: FieldValue a => SearchField a -> a -> SearchTerm
-  EqualsAnyString            :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsString             :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsStringMatchingCase :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  DoesNotContainString       :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsAnyString          :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsAllStrings         :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsNoneOfStrings      :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  RegexpMatches              :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  RegexpNotMatches           :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  LessThan                   :: FieldValue a => SearchField a -> a -> SearchTerm
-  LessThanOrEqual            :: FieldValue a => SearchField a -> a -> SearchTerm
-  GreaterThan                :: FieldValue a => SearchField a -> a -> SearchTerm
-  GreaterThanOrEqual         :: FieldValue a => SearchField a -> a -> SearchTerm
-  ContainsAnyWords           :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsAllWords           :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ContainsNoneOfWords        :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-  ChangedBefore              :: FieldValue a => SearchField a -> UTCTime -> SearchTerm
-  ChangedAfter               :: FieldValue a => SearchField a -> UTCTime -> SearchTerm
-  ChangedFrom                :: FieldValue a => SearchField a -> a -> SearchTerm
-  ChangedTo                  :: FieldValue a => SearchField a -> a -> SearchTerm
-  ChangedBy                  :: FieldValue a => SearchField a -> BzUserEmail -> SearchTerm
-  ContentMatches             :: T.Text -> SearchTerm
-  ContentNotMatches          :: T.Text -> SearchTerm
-  IsEmpty                    :: FieldValue a => SearchField a -> SearchTerm
-  IsNotEmpty                 :: FieldValue a => SearchField a -> SearchTerm
+  UnaryOp  :: FieldType a => T.Text -> SearchField a -> SearchTerm
+  BinaryOp :: (FieldType a, FieldType b) => T.Text -> SearchField a -> b -> SearchTerm
 
-(.==.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(.==.) = Equals
+(.==.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.==.) = (Term .) . BinaryOp "equals"
 infix 4 .==.
 
-(./=.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(./=.) = NotEquals
+(./=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(./=.) = (Term .) . BinaryOp "notequals"
 infix 4 ./=.
 
-(.<.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(.<.) = LessThan
+(.<.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.<.) = (Term .) . BinaryOp "lessthan"
 infix 4 .<.
 
-(.<=.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(.<=.) = LessThanOrEqual
+(.<=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.<=.) = (Term .) . BinaryOp "lessthaneq"
 infix 4 .<=.
 
-(.>.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(.>.) = GreaterThan
+(.>.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.>.) = (Term .) . BinaryOp "greaterthan"
 infix 4 .>.
 
-(.>=.) :: FieldValue a => SearchField a -> a -> SearchTerm
-(.>=.) = GreaterThanOrEqual
+(.>=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.>=.) = (Term .) . BinaryOp "greaterthaneq"
 infix 4 .>=.
 
-(.=~.) :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-(.=~.) = RegexpMatches
+(.=~.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.=~.) = (Term .) . BinaryOp "regexp"
 
-(./=~.) :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-(./=~.) = RegexpNotMatches
+(./=~.) :: FieldType a => SearchField a -> a -> SearchExpr
+(./=~.) = (Term .) . BinaryOp "notregexp"
 
-contains :: FieldValue a => SearchField a -> T.Text -> SearchTerm
-contains = ContainsString
+equalsAny :: FieldType a => SearchField a -> [a] -> SearchExpr
+equalsAny = (Term .) . BinaryOp "anyexact"
+
+contains :: SearchField T.Text -> T.Text -> SearchExpr
+contains = (Term .) . BinaryOp "substring"
+
+containsCase :: SearchField T.Text -> T.Text -> SearchExpr
+containsCase = (Term .) . BinaryOp "casesubstring"
+
+containsAny :: SearchField T.Text -> [T.Text] -> SearchExpr
+containsAny = (Term .) . BinaryOp "anywordssubstr"
+
+containsAll :: SearchField T.Text -> [T.Text] -> SearchExpr
+containsAll = (Term .) . BinaryOp "allwordssubstr"
+
+changedBefore :: FieldType a => SearchField a -> UTCTime -> SearchExpr
+changedBefore = (Term .) . BinaryOp "changedbefore"
+
+changedAfter :: FieldType a => SearchField a -> UTCTime -> SearchExpr
+changedAfter = (Term .) . BinaryOp "changedafter"
+
+changedFrom :: FieldType a => SearchField a -> a -> SearchExpr
+changedFrom = (Term .) . BinaryOp "changedfrom"
+
+changedTo :: FieldType a => SearchField a -> a -> SearchExpr
+changedTo = (Term .) . BinaryOp "changedto"
+
+changedBy :: FieldType a => SearchField a -> BzUserEmail -> SearchExpr
+changedBy = (Term .) . BinaryOp "changedby"
+
+contentMatches :: T.Text -> SearchExpr
+contentMatches = Term . BinaryOp "matches" Content
+
+isEmpty :: FieldType a => SearchField a -> SearchExpr
+isEmpty = Term . UnaryOp "isempty"
 
 data SearchExpr
   = And [SearchExpr]
@@ -217,57 +239,31 @@ data SearchExpr
   | Not SearchExpr
   | Term SearchTerm
 
-class Searchable a where asSearchExpr :: a -> SearchExpr
-instance Searchable SearchExpr where asSearchExpr = id
-instance Searchable SearchTerm where asSearchExpr = Term
-
-(.&&.) :: (Searchable a, Searchable b) => a -> b -> SearchExpr
-(.&&.) a b = And [asSearchExpr a, asSearchExpr b]
+(.&&.) :: SearchExpr -> SearchExpr -> SearchExpr
+(.&&.) a (And as) = And (a:as)
+(.&&.) a b        = And [a, b]
 infixr 3 .&&.
 
-(.||.) :: (Searchable a, Searchable b) => a -> b -> SearchExpr
-(.||.) a b = Or [asSearchExpr a, asSearchExpr b]
+(.||.) :: SearchExpr -> SearchExpr -> SearchExpr
+(.||.) a (Or as) = Or (a:as)
+(.||.) a b       = Or [a, b]
 infixr 2 .||.
 
-not' :: Searchable a => a -> SearchExpr
-not' a = Not . asSearchExpr $ a
+not' :: SearchExpr -> SearchExpr
+not' (Not a) = a
+not' a       = Not a
 
 taggedQueryPart :: Int -> Char -> T.Text -> QueryPart
 taggedQueryPart t k v = (T.cons k . T.pack . show $ t, Just v)
 
-termQuery :: FieldValue b => Int -> SearchField a -> T.Text -> b -> [QueryPart]
+termQuery :: FieldType b => Int -> SearchField a -> T.Text -> b -> [QueryPart]
 termQuery t f o v = [taggedQueryPart t 'f' (searchFieldName f),
                      taggedQueryPart t 'o' o,
                      taggedQueryPart t 'v' (fvAsText v)]
 
 evalSearchTerm :: Int -> SearchTerm -> [QueryPart]
-evalSearchTerm t (Equals field val)                     = termQuery t field "equals" val
-evalSearchTerm t (NotEquals field val)                  = termQuery t field "notequals" val
-evalSearchTerm t (EqualsAnyString field val)            = termQuery t field "anyexact" val
-evalSearchTerm t (ContainsString field val)             = termQuery t field "substring" val
-evalSearchTerm t (ContainsStringMatchingCase field val) = termQuery t field "casesubstring" val
-evalSearchTerm t (DoesNotContainString field val)       = termQuery t field "notsubstring" val
-evalSearchTerm t (ContainsAnyString field val)          = termQuery t field "anywordssubstr" val
-evalSearchTerm t (ContainsAllStrings field val)         = termQuery t field "allwordssubstr" val
-evalSearchTerm t (ContainsNoneOfStrings field val)      = termQuery t field "nowordssubstr" val
-evalSearchTerm t (RegexpMatches field val)              = termQuery t field "regexp" val
-evalSearchTerm t (RegexpNotMatches field val)           = termQuery t field "notregexp" val
-evalSearchTerm t (LessThan field val)                   = termQuery t field "lessthan" val
-evalSearchTerm t (LessThanOrEqual field val)            = termQuery t field "lessthaneq" val
-evalSearchTerm t (GreaterThan field val)                = termQuery t field "greaterthan" val
-evalSearchTerm t (GreaterThanOrEqual field val)         = termQuery t field "greaterthaneq" val
-evalSearchTerm t (ContainsAnyWords field val)           = termQuery t field "anywords" val
-evalSearchTerm t (ContainsAllWords field val)           = termQuery t field "allwords" val
-evalSearchTerm t (ContainsNoneOfWords field val)        = termQuery t field "nowords" val
-evalSearchTerm t (ChangedBefore field val)              = termQuery t field "changedbefore" val
-evalSearchTerm t (ChangedAfter field val)               = termQuery t field "changedafter" val
-evalSearchTerm t (ChangedFrom field val)                = termQuery t field "changedfrom" val
-evalSearchTerm t (ChangedTo field val)                  = termQuery t field "changedto" val
-evalSearchTerm t (ChangedBy field val)                  = termQuery t field "changedby" val
-evalSearchTerm t (ContentMatches val)                   = termQuery t Content "matches" val
-evalSearchTerm t (ContentNotMatches val)                = termQuery t Content "notmatches" val
-evalSearchTerm t (IsEmpty field)                        = termQuery t field "isempty" ("" :: T.Text)
-evalSearchTerm t (IsNotEmpty field)                     = termQuery t field "isnotempty" ("" :: T.Text)
+evalSearchTerm t (UnaryOp op field)          = termQuery t field op ("" :: T.Text)
+evalSearchTerm t (BinaryOp op field val)     = termQuery t field op val
 
 evalSearchExpr :: SearchExpr -> [QueryPart]
 evalSearchExpr e = snd $ evalSearchExpr' 1 e
@@ -306,19 +302,19 @@ instance FromJSON SearchResult where
   parseJSON (Object v) = SearchResult <$> v .: "bugs"
   parseJSON _          = mzero
   
-searchBugs :: Searchable a => BzSession -> a -> IO [Bug]
+searchBugs :: BzSession -> SearchExpr -> IO [Bug]
 searchBugs session search = do
-  let searchQuery = evalSearchExpr . asSearchExpr $ search
+  let searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] searchQuery
   print $ requestUrl req
   (SearchResult bugs) <- sendBzRequest session req
   return bugs
 
-searchBugsWithLimit :: Searchable a => BzSession -> Int -> Int -> a -> IO [Bug]
+searchBugsWithLimit :: BzSession -> Int -> Int -> SearchExpr -> IO [Bug]
 searchBugsWithLimit session limit offset search = do
   let limitQuery = [("limit", Just $ fvAsText limit),
                     ("offset", Just $ fvAsText offset)]
-      searchQuery = evalSearchExpr . asSearchExpr $ search
+      searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] (limitQuery ++ searchQuery)
   print $ requestUrl req
   (SearchResult bugs) <- sendBzRequest session req
