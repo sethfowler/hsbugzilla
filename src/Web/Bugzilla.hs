@@ -33,6 +33,8 @@ module Web.Bugzilla
 , HistoryEntry (..)
 , Change (..)
 , Modification (..)
+, fieldName
+
 , searchBugs
 , searchBugsWithLimit
 , getBug

@@ -26,6 +26,7 @@ module Web.Bugzilla.Internal.Types
 , HistoryEntry (..)
 , Change (..)
 , Modification (..)
+, fieldName
 , searchFieldName
 ) where
 
@@ -165,6 +166,61 @@ instance Show (Field a) where
   show VersionField                  = "VersionField"
   show VotesField                    = "VotesField"
   show (CustomField name)            = "CustomField " ++ show name
+
+fieldName :: Field a -> T.Text
+fieldName AliasField                    = "Alias"
+fieldName AssignedToField               = "Assigned to"
+fieldName AttachmentCreatorField        = "Attachment creator"
+fieldName AttachmentDataField           = "Attachment data"
+fieldName AttachmentDescriptionField    = "Attachment description"
+fieldName AttachmentFilenameField       = "Attachment filename"
+fieldName AttachmentIsObsoleteField     = "Attachment is obsolete"
+fieldName AttachmentIsPatchField        = "Attachment is patch"
+fieldName AttachmentIsPrivateField      = "Attachment is private"
+fieldName AttachmentMimetypeField       = "Attachment MIME type"
+fieldName BlocksField                   = "Blocks"
+fieldName BugIdField                    = "BugId"
+fieldName CcField                       = "CC"
+fieldName CcListAccessibleField         = "CC list is accessible"
+fieldName ClassificationField           = "Classification"
+fieldName CommentField                  = "Comment"
+fieldName CommentIsPrivateField         = "Comment is private"
+fieldName CommentTagsField              = "Comment tags"
+fieldName CommenterField                = "Commenter"
+fieldName ComponentField                = "Component"
+fieldName ContentField                  = "Content"
+fieldName CreationDateField             = "Creation date"
+fieldName DaysElapsedField              = "Days elapsed"
+fieldName DependsOnField                = "Depends on"
+fieldName EverConfirmedField            = "Ever confirmed"
+fieldName FlagRequesteeField            = "Flag requestee"
+fieldName FlagSetterField               = "Flag setter"
+fieldName FlagsField                    = "Flags"
+fieldName GroupField                    = "Group"
+fieldName KeywordsField                 = "Keywords"
+fieldName ChangedField                  = "Changed"
+fieldName CommentCountField             = "Comment count"
+fieldName OperatingSystemField          = "Operating system"
+fieldName HardwareField                 = "Hardware"
+fieldName PriorityField                 = "Priority"
+fieldName ProductField                  = "Product"
+fieldName QaContactField                = "QA contact"
+fieldName ReporterField                 = "Reporter"
+fieldName ReporterAccessibleField       = "Reporter accessible"
+fieldName ResolutionField               = "Resolution"
+fieldName RestrictCommentsField         = "Restrict comments"
+fieldName SeeAlsoField                  = "See also"
+fieldName SeverityField                 = "Severity"
+fieldName StatusField                   = "Status"
+fieldName WhiteboardField               = "Whiteboard"
+fieldName SummaryField                  = "Summary"
+fieldName TagsField                     = "Tags"
+fieldName TargetMilestoneField          = "Target milestone"
+fieldName TimeSinceAssigneeTouchedField = "Time since assignee touched"
+fieldName BugURLField                   = "Bug URL"
+fieldName VersionField                  = "Version"
+fieldName VotesField                    = "Votes"
+fieldName (CustomField name)            = T.concat ["Custom field \"", T.pack (show name), "\""]
 
 searchFieldName :: Field a -> T.Text
 searchFieldName AliasField                    = "alias"
@@ -496,8 +552,8 @@ data Change
 
 instance FromJSON Change where
   parseJSON (Object v) = do
-    fieldName    <- v .: "field_name"
-    case fieldName of
+    changedField <- v .: "field_name"
+    case changedField of
       "alias"                  -> TextFieldChange AliasField <$> parseModification v
       "assigned_to"            -> TextFieldChange AssignedToField <$> parseModification v
       "attachments.submitter"  -> TextFieldChange AttachmentCreatorField <$> parseModification v

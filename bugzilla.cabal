@@ -16,6 +16,10 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+Flag BuildDemo
+  Description:  Build the 'bugzilla' demo program
+  Default:      False
+
 library
   ghc-options:         -Wall
   exposed-modules:     Web.Bugzilla,
@@ -43,12 +47,18 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
 
-executable test-bugzilla
+executable bugzilla
+  if flag(BuildDemo)
+    buildable:         True
+  else
+    buildable:         False
+
   ghc-options:         -Wall
-  main-is:             TestBugzilla.hs
+  main-is:             BugzillaDemo.hs
   build-depends:       base >=4.6 && <4.7,
                        bugzilla,
                        containers,
-                       text
-  hs-source-dirs:      tests
+                       text,
+                       time
+  hs-source-dirs:      demo
   default-language:    Haskell2010
