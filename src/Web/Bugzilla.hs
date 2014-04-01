@@ -1,3 +1,5 @@
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -15,6 +17,10 @@ module Web.Bugzilla
 , BugList (..)
 , Attachment (..)
 , Comment (..)
+, History (..)
+, HistoryEntry (..)
+, Change (..)
+, Modification (..)
 , BzSession (..)
 , loginSession
 , anonymousSession
@@ -22,6 +28,7 @@ module Web.Bugzilla
 , getAttachment
 , getAttachments
 , getComments
+, getHistory
 ) where
 
 import Control.Applicative
@@ -30,16 +37,19 @@ import Control.Monad (MonadPlus, mzero)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
 import Data.Aeson.Encode
+import Data.Aeson.Types
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import qualified Data.Text.Read as TR
 import qualified Data.Vector as V
 import Data.Time.Clock (UTCTime(..))
 import Network.Connection (TLSSettings(..))
 import Network.HTTP.Conduit (mkManagerSettings, newManager, closeManager)
 
 import Web.Bugzilla.Internal
+import Web.Bugzilla.Internal.Types
 
 type BzBugId        = Int
 type BzAttachmentId = Int
@@ -47,7 +57,6 @@ type BzCommentId    = Int
 type BzUserId       = Int
 type BzFlagId       = Int
 type BzFlagType     = Int
-type BzUserEmail    = T.Text
 
 newBzContext :: BzServer -> IO BzContext
 newBzContext server = do
@@ -290,6 +299,115 @@ instance FromJSON CommentList where
       _ -> mzero
   parseJSON _ = mzero
 
+data History = History
+  { historyBugId   :: !BzBugId
+  , historyEntries :: [HistoryEntry]
+  } deriving (Eq, Show)
+
+instance FromJSON History where
+  parseJSON (Object v) = do
+    bugsVal <- v .: "bugs"
+    case bugsVal of
+      Array (V.toList -> [history]) ->
+        withObject "history" (\h -> History <$> h .: "id" <*> h .: "history") history
+      _ -> mzero
+  parseJSON _ = mzero
+  
+data HistoryEntry = HistoryEntry
+  { historyEntryWhen    :: UTCTime
+  , historyEntryWho     :: BzUserEmail
+  , historyEntryChanges :: [Change]
+  } deriving (Eq, Show)
+
+instance FromJSON HistoryEntry where
+  parseJSON (Object v) = HistoryEntry <$> v .: "when"
+                                      <*> v .: "who"
+                                      <*> v .: "changes"
+  parseJSON _ = mzero
+
+data Change
+  = TextFieldChange (Field T.Text) (Modification T.Text)
+  | IntFieldChange (Field Int) (Modification Int)
+  | TimeFieldChange (Field UTCTime) (Modification UTCTime)
+  | BoolFieldChange (Field Bool) (Modification Bool)
+    deriving (Eq, Show)
+
+instance FromJSON Change where
+  parseJSON (Object v) = do
+    fieldName    <- v .: "field_name"
+    case fieldName of
+      "alias"                  -> TextFieldChange AliasField <$> parseModification v
+      "assigned_to"            -> TextFieldChange AssignedToField <$> parseModification v
+      "attachments.submitter"  -> TextFieldChange AttachmentCreatorField <$> parseModification v
+      "attach_data.thedata"    -> TextFieldChange AttachmentDataField <$> parseModification v
+      "attachments.description"-> TextFieldChange AttachmentDescriptionField <$> parseModification v
+      "attachments.filename"   -> TextFieldChange AttachmentFilenameField <$> parseModification v
+      "attachments.isobsolete" -> BoolFieldChange AttachmentIsObsoleteField <$> parseModification v
+      "attachments.ispatch"    -> BoolFieldChange AttachmentIsPatchField <$> parseModification v
+      "attachments.isprivate"  -> BoolFieldChange AttachmentIsPrivateField <$> parseModification v
+      "attachments.mimetype"   -> TextFieldChange AttachmentMimetypeField <$> parseModification v
+      "blocks"                 -> IntFieldChange BlocksField <$> parseModification v
+      "bug_id"                 -> IntFieldChange BugIdField <$> parseModification v
+      "cc"                     -> TextFieldChange CcField <$> parseModification v
+      "is_cc_accessible"       -> BoolFieldChange CcListAccessibleField <$> parseModification v
+      "classification"         -> TextFieldChange ClassificationField <$> parseModification v
+      "component"              -> TextFieldChange ComponentField <$> parseModification v
+      "content"                -> TextFieldChange ContentField <$> parseModification v
+      "creation_time"          -> TimeFieldChange CreationDateField <$> parseModification v
+      "days_elapsed"           -> IntFieldChange DaysElapsedField <$> parseModification v
+      "depends_on"             -> IntFieldChange DependsOnField <$> parseModification v
+      "everconfirmed"          -> BoolFieldChange EverConfirmedField <$> parseModification v
+      "flagtypes.name"         -> TextFieldChange FlagsField <$> parseModification v
+      "bug_group"              -> TextFieldChange GroupField <$> parseModification v
+      "keywords"               -> TextFieldChange KeywordsField <$> parseModification v
+      "op_sys"                 -> TextFieldChange OperatingSystemField <$> parseModification v
+      "platform"               -> TextFieldChange HardwareField <$> parseModification v
+      "priority"               -> TextFieldChange PriorityField <$> parseModification v
+      "product"                -> TextFieldChange ProductField <$> parseModification v
+      "qa_contact"             -> TextFieldChange QaContactField <$> parseModification v
+      "reporter"               -> TextFieldChange ReporterField <$> parseModification v
+      "reporter_accessible"    -> BoolFieldChange ReporterAccessibleField <$> parseModification v
+      "resolution"             -> TextFieldChange ResolutionField <$> parseModification v
+      "restrict_comments"      -> BoolFieldChange RestrictCommentsField <$> parseModification v
+      "see_also"               -> TextFieldChange SeeAlsoField <$> parseModification v
+      "severity"               -> TextFieldChange SeverityField <$> parseModification v
+      "status"                 -> TextFieldChange StatusField <$> parseModification v
+      "whiteboard"             -> TextFieldChange WhiteboardField <$> parseModification v
+      "summary"                -> TextFieldChange SummaryField <$> parseModification v
+      "tag"                    -> TextFieldChange TagsField <$> parseModification v
+      "target_milestone"       -> TextFieldChange TargetMilestoneField <$> parseModification v
+      "url"                    -> TextFieldChange BugURLField <$> parseModification v
+      "version"                -> TextFieldChange VersionField <$> parseModification v
+      "votes"                  -> TextFieldChange VotesField <$> parseModification v
+      name                     -> TextFieldChange (CustomField name) <$> parseModification v
+  parseJSON _ = mzero
+               
+data (Eq a, Show a) => Modification a = Modification
+  { modRemoved      :: Maybe a
+  , modAdded        :: Maybe a
+  , modAttachmentId :: Maybe BzAttachmentId
+  } deriving (Eq, Show)
+
+parseModification :: (FromJSON a, Eq b, Show b, ToModification a b) => Object -> Parser (Modification b)
+parseModification v = Modification <$> (toMod =<< v .: "removed")
+                                   <*> (toMod =<< v .: "added")
+                                   <*> v .:? "attachment_id"
+
+class ToModification a b | b -> a where toMod :: a -> Parser (Maybe b)
+instance ToModification T.Text T.Text where toMod = return . Just
+instance ToModification UTCTime UTCTime where toMod = return . Just
+
+instance ToModification T.Text Int where
+  toMod v | v == "" = return Nothing
+          | otherwise = case TR.decimal v of
+                          Left _       -> mzero
+                          Right (i, _) -> return $ Just i
+  
+instance ToModification T.Text Bool where
+   toMod v | v == "0"  = return $ Just False
+           | v == "1"  = return $ Just True
+           | otherwise = mzero
+
 -- Note that we make the (possibly unwise) assumption that Bugzilla
 -- returns the comments in order. If it turns out that's not true, we
 -- can always sort by their 'id' to ensure correct results.
@@ -353,7 +471,8 @@ getComments session bid = do
   (CommentList as) <- sendBzRequest session req
   return as
 
--- Remaining features:
---  * History
--- With those implemented, work on the Snap site can start.
-
+getHistory :: BzSession -> BzBugId -> IO History
+getHistory session bid = do
+  let req = newBzRequest session ["bug", idAsText bid, "history"] []
+  print $ requestUrl req
+  sendBzRequest session req

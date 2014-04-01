@@ -26,5 +26,5 @@ runTest session user = do
   bugs <- searchBugs session search
   mapM_ print bugs
   -}
-  cs <- getComments session 35168
-  print cs
+  h <- getHistory session 35168
+  print h

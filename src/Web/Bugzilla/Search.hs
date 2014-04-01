@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.Bugzilla.Search
-( SearchField (..)
+( Field (..)
 , SearchExpr
 , (.==.)
 , (./=.)
@@ -38,6 +38,7 @@ import Data.Time.ISO8601 (formatISO8601)
 
 import Web.Bugzilla
 import Web.Bugzilla.Internal
+import Web.Bugzilla.Internal.Types
 
 class FieldType a where fvAsText :: a -> T.Text
 
@@ -52,182 +53,74 @@ instance FieldType Bool where
 instance FieldType a => FieldType [a] where
   fvAsText = T.intercalate "," . map fvAsText
 
-data SearchField a where
-  AliasField                    :: SearchField T.Text      -- Alias
-  AssignedToField               :: SearchField BzUserEmail -- Assignee
-  AttachmentCreatorField        :: SearchField BzUserEmail -- Attachment creator
-  AttachmentDataField           :: SearchField T.Text      -- Attachment data
-  AttachmentDescriptionField    :: SearchField T.Text      -- Attachment description
-  AttachmentFilenameField       :: SearchField T.Text      -- Attachment filename
-  AttachmentIsObsoleteField     :: SearchField Bool        -- Attachment is obsolete
-  AttachmentIsPatchField        :: SearchField Bool        -- Attachment is patch
-  AttachmentIsPrivateField      :: SearchField Bool        -- Attachment is private
-  AttachmentMimetypeField       :: SearchField T.Text      -- Attachment mime type
-  BlocksField                   :: SearchField Int         -- Blocks
-  BugIdField                    :: SearchField Int         -- Bug ID
-  CcField                       :: SearchField BzUserEmail -- CC
-  CcListAccessibleField         :: SearchField Bool        -- CC list accessible
-  ClassificationField           :: SearchField T.Text      -- Classification
-  CommentField                  :: SearchField T.Text      -- Comment
-  CommentIsPrivateField         :: SearchField T.Text      -- Comment is private
-  CommentTagsField              :: SearchField T.Text      -- Comment Tags
-  CommenterField                :: SearchField BzUserEmail -- Commenter
-  ComponentField                :: SearchField T.Text      -- Component
-  ContentField                  :: SearchField T.Text      -- Content
-  CreationDateField             :: SearchField UTCTime     -- Creation date
-  DaysElapsedField              :: SearchField Int         -- Days since bug changed
-  DependsOnField                :: SearchField Int         -- Depends on
-  EverConfirmedField            :: SearchField Bool        -- Ever confirmed
-  FlagRequesteeField            :: SearchField BzUserEmail -- Flag Requestee
-  FlagSetterField               :: SearchField BzUserEmail -- Flag Setter
-  FlagsField                    :: SearchField T.Text      -- Flags
-  GroupField                    :: SearchField T.Text      -- Group
-  KeywordsField                 :: SearchField T.Text      -- Keywords
-  ChangedField                  :: SearchField UTCTime     -- Changed
-  CommentCountField             :: SearchField Int         -- Number of Comments
-  OperatingSystemField          :: SearchField T.Text      -- OS
-  HardwareField                 :: SearchField T.Text      -- Hardware
-  PriorityField                 :: SearchField T.Text      -- Priority
-  ProductField                  :: SearchField T.Text      -- Product
-  QaContactField                :: SearchField BzUserEmail -- QA Contact
-  ReporterField                 :: SearchField BzUserEmail -- Reporter
-  ReporterAccessibleField       :: SearchField Bool        -- Reporter accessible
-  ResolutionField               :: SearchField T.Text      -- Resolution
-  RestrictCommentsField         :: SearchField Bool        -- Restrict Comments
-  SeeAlsoField                  :: SearchField T.Text      -- See Also
-  SeverityField                 :: SearchField T.Text      -- Severity
-  StatusField                   :: SearchField T.Text      -- Status
-  WhiteboardField               :: SearchField T.Text      -- Whiteboard
-  SummaryField                  :: SearchField T.Text      -- Summary
-  TagsField                     :: SearchField T.Text      -- Tags
-  TargetMilestoneField          :: SearchField T.Text      -- Target Milestone
-  TimeSinceAssigneeTouchedField :: SearchField Int         -- Time Since Assignee Touched
-  BugURLField                   :: SearchField T.Text      -- URL
-  VersionField                  :: SearchField T.Text      -- Version
-  VotesField                    :: SearchField T.Text      -- Votes
-
-searchFieldName :: SearchField a -> T.Text
-searchFieldName AliasField                    = "alias"
-searchFieldName AssignedToField               = "assigned_to"
-searchFieldName AttachmentCreatorField        = "attachments.submitter"
-searchFieldName AttachmentDataField           = "attach_data.thedata"
-searchFieldName AttachmentDescriptionField    = "attachments.description"
-searchFieldName AttachmentFilenameField       = "attachments.filename"
-searchFieldName AttachmentIsObsoleteField     = "attachments.isobsolete"
-searchFieldName AttachmentIsPatchField        = "attachments.ispatch"
-searchFieldName AttachmentIsPrivateField      = "attachments.isprivate"
-searchFieldName AttachmentMimetypeField       = "attachments.mimetype"
-searchFieldName BlocksField                   = "blocked"
-searchFieldName BugIdField                    = "bug_id"
-searchFieldName CcField                       = "cc"
-searchFieldName CcListAccessibleField         = "cclist_accessible"
-searchFieldName ClassificationField           = "classification"
-searchFieldName CommentField                  = "longdesc"
-searchFieldName CommentIsPrivateField         = "longdescs.isprivate"
-searchFieldName CommentTagsField              = "comment_tag"
-searchFieldName CommenterField                = "commenter"
-searchFieldName ComponentField                = "component"
-searchFieldName ContentField                  = "content"
-searchFieldName CreationDateField             = "creation_ts"
-searchFieldName DaysElapsedField              = "days_elapsed"
-searchFieldName DependsOnField                = "dependson"
-searchFieldName EverConfirmedField            = "everconfirmed"
-searchFieldName FlagRequesteeField            = "requestees.login_name"
-searchFieldName FlagSetterField               = "setters.login_name"
-searchFieldName FlagsField                    = "flagtypes.name"
-searchFieldName GroupField                    = "bug_group"
-searchFieldName KeywordsField                 = "keywords"
-searchFieldName ChangedField                  = "delta_ts"
-searchFieldName CommentCountField             = "longdescs.count"
-searchFieldName OperatingSystemField          = "op_sys"
-searchFieldName HardwareField                 = "rep_platform"
-searchFieldName PriorityField                 = "priority"
-searchFieldName ProductField                  = "product"
-searchFieldName QaContactField                = "qa_contact"
-searchFieldName ReporterField                 = "reporter"
-searchFieldName ReporterAccessibleField       = "reporter_accessible"
-searchFieldName ResolutionField               = "resolution"
-searchFieldName RestrictCommentsField         = "restrict_comments"
-searchFieldName SeeAlsoField                  = "see_also"
-searchFieldName SeverityField                 = "bug_severity"
-searchFieldName StatusField                   = "bug_status"
-searchFieldName WhiteboardField               = "status_whiteboard"
-searchFieldName SummaryField                  = "short_desc"
-searchFieldName TagsField                     = "tag"
-searchFieldName TargetMilestoneField          = "target_milestone"
-searchFieldName TimeSinceAssigneeTouchedField = "owner_idle_time"
-searchFieldName BugURLField                   = "bug_file_loc"
-searchFieldName VersionField                  = "version"
-searchFieldName VotesField                    = "votes"
-
 data SearchTerm where
-  UnaryOp  :: FieldType a => T.Text -> SearchField a -> SearchTerm
-  BinaryOp :: (FieldType a, FieldType b) => T.Text -> SearchField a -> b -> SearchTerm
+  UnaryOp  :: FieldType a => T.Text -> Field a -> SearchTerm
+  BinaryOp :: (FieldType a, FieldType b) => T.Text -> Field a -> b -> SearchTerm
 
-(.==.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.==.) :: FieldType a => Field a -> a -> SearchExpr
 (.==.) = (Term .) . BinaryOp "equals"
 infix 4 .==.
 
-(./=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(./=.) :: FieldType a => Field a -> a -> SearchExpr
 (./=.) = (Term .) . BinaryOp "notequals"
 infix 4 ./=.
 
-(.<.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.<.) :: FieldType a => Field a -> a -> SearchExpr
 (.<.) = (Term .) . BinaryOp "lessthan"
 infix 4 .<.
 
-(.<=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.<=.) :: FieldType a => Field a -> a -> SearchExpr
 (.<=.) = (Term .) . BinaryOp "lessthaneq"
 infix 4 .<=.
 
-(.>.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.>.) :: FieldType a => Field a -> a -> SearchExpr
 (.>.) = (Term .) . BinaryOp "greaterthan"
 infix 4 .>.
 
-(.>=.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.>=.) :: FieldType a => Field a -> a -> SearchExpr
 (.>=.) = (Term .) . BinaryOp "greaterthaneq"
 infix 4 .>=.
 
-(.=~.) :: FieldType a => SearchField a -> a -> SearchExpr
+(.=~.) :: FieldType a => Field a -> a -> SearchExpr
 (.=~.) = (Term .) . BinaryOp "regexp"
 
-(./=~.) :: FieldType a => SearchField a -> a -> SearchExpr
+(./=~.) :: FieldType a => Field a -> a -> SearchExpr
 (./=~.) = (Term .) . BinaryOp "notregexp"
 
-equalsAny :: FieldType a => SearchField a -> [a] -> SearchExpr
+equalsAny :: FieldType a => Field a -> [a] -> SearchExpr
 equalsAny = (Term .) . BinaryOp "anyexact"
 
-contains :: SearchField T.Text -> T.Text -> SearchExpr
+contains :: Field T.Text -> T.Text -> SearchExpr
 contains = (Term .) . BinaryOp "substring"
 
-containsCase :: SearchField T.Text -> T.Text -> SearchExpr
+containsCase :: Field T.Text -> T.Text -> SearchExpr
 containsCase = (Term .) . BinaryOp "casesubstring"
 
-containsAny :: SearchField T.Text -> [T.Text] -> SearchExpr
+containsAny :: Field T.Text -> [T.Text] -> SearchExpr
 containsAny = (Term .) . BinaryOp "anywordssubstr"
 
-containsAll :: SearchField T.Text -> [T.Text] -> SearchExpr
+containsAll :: Field T.Text -> [T.Text] -> SearchExpr
 containsAll = (Term .) . BinaryOp "allwordssubstr"
 
-changedBefore :: FieldType a => SearchField a -> UTCTime -> SearchExpr
+changedBefore :: FieldType a => Field a -> UTCTime -> SearchExpr
 changedBefore = (Term .) . BinaryOp "changedbefore"
 
-changedAfter :: FieldType a => SearchField a -> UTCTime -> SearchExpr
+changedAfter :: FieldType a => Field a -> UTCTime -> SearchExpr
 changedAfter = (Term .) . BinaryOp "changedafter"
 
-changedFrom :: FieldType a => SearchField a -> a -> SearchExpr
+changedFrom :: FieldType a => Field a -> a -> SearchExpr
 changedFrom = (Term .) . BinaryOp "changedfrom"
 
-changedTo :: FieldType a => SearchField a -> a -> SearchExpr
+changedTo :: FieldType a => Field a -> a -> SearchExpr
 changedTo = (Term .) . BinaryOp "changedto"
 
-changedBy :: FieldType a => SearchField a -> BzUserEmail -> SearchExpr
+changedBy :: FieldType a => Field a -> BzUserEmail -> SearchExpr
 changedBy = (Term .) . BinaryOp "changedby"
 
 contentMatches :: T.Text -> SearchExpr
 contentMatches = Term . BinaryOp "matches" ContentField
 
-isEmpty :: FieldType a => SearchField a -> SearchExpr
+isEmpty :: FieldType a => Field a -> SearchExpr
 isEmpty = Term . UnaryOp "isempty"
 
 data SearchExpr
@@ -253,7 +146,7 @@ not' a       = Not a
 taggedQueryPart :: Int -> Char -> T.Text -> QueryPart
 taggedQueryPart t k v = (T.cons k . T.pack . show $ t, Just v)
 
-termQuery :: FieldType b => Int -> SearchField a -> T.Text -> b -> [QueryPart]
+termQuery :: FieldType b => Int -> Field a -> T.Text -> b -> [QueryPart]
 termQuery t f o v = [taggedQueryPart t 'f' (searchFieldName f),
                      taggedQueryPart t 'o' o,
                      taggedQueryPart t 'v' (fvAsText v)]
