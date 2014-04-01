@@ -20,7 +20,8 @@ library
   ghc-options:         -Wall
   exposed-modules:     Web.Bugzilla,
                        Web.Bugzilla.Search
-  other-modules:       Web.Bugzilla.Internal,
+  other-modules:       Web.Bugzilla.Internal.Network,
+                       Web.Bugzilla.Internal.Search,
                        Web.Bugzilla.Internal.Types
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.7,

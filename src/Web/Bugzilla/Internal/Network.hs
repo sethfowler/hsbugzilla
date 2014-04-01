@@ -1,13 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Web.Bugzilla.Internal
-( QueryPart
-, BzServer
-, BzContext (..)
-, BzToken
-, BzSession (..)
-, BzException (..)
+module Web.Bugzilla.Internal.Network
+( BugzillaServer
+, BugzillaContext (..)
+, BugzillaToken
+, BugzillaSession (..)
+, BugzillaException (..)
+, QueryPart
 , Request
 , requestUrl
 , newBzRequest
@@ -31,33 +31,34 @@ import Data.Typeable
 import Network.HTTP.Conduit (Manager, Request(..), Response(..), host, httpLbs, path, queryString, secure)
 import Network.HTTP.Types.URI (QueryText, encodePathSegments, renderQueryText)
 
-type QueryPart = (T.Text, Maybe T.Text)
-type BzServer  = T.Text
+type BugzillaServer  = T.Text
 
-data BzContext = BzContext
-  { bzServer  :: BzServer
+data BugzillaContext = BugzillaContext
+  { bzServer  :: BugzillaServer
   , bzManager :: Manager
   }
 
-data BzToken = BzToken T.Text
+data BugzillaToken = BugzillaToken T.Text
 
-instance FromJSON BzToken where
-  parseJSON (Object v) = BzToken <$> v .: "token"
+instance FromJSON BugzillaToken where
+  parseJSON (Object v) = BugzillaToken <$> v .: "token"
   parseJSON _          = mzero
 
-data BzSession = AnonymousSession BzContext
-               | LoginSession BzContext BzToken
+data BugzillaSession = AnonymousSession BugzillaContext
+               | LoginSession BugzillaContext BugzillaToken
 
-bzContext :: BzSession -> BzContext
+bzContext :: BugzillaSession -> BugzillaContext
 bzContext (AnonymousSession ctx) = ctx
 bzContext (LoginSession ctx _)   = ctx
 
-data BzException
-  = BzJSONParseFailure String
-  | BzAPIError Int String
-  | BzUnexpectedValue String
+data BugzillaException
+  = BugzillaJSONParseError String
+  | BugzillaAPIError Int String
+  | BugzillaUnexpectedValue String
     deriving (Show, Typeable)
-instance Exception BzException
+instance Exception BugzillaException
+
+type QueryPart = (T.Text, Maybe T.Text)
 
 requestUrl :: Request -> B.ByteString
 requestUrl req = "https://" <> host req <> path req <> queryString req
@@ -69,7 +70,7 @@ sslRequest =
     port   = 443
   }
 
-newBzRequest :: BzSession -> [T.Text] -> QueryText -> Request
+newBzRequest :: BugzillaSession -> [T.Text] -> QueryText -> Request
 newBzRequest session methodParts query =
     sslRequest {
       host        = TE.encodeUtf8 . bzServer . bzContext $ session,
@@ -78,8 +79,8 @@ newBzRequest session methodParts query =
     }
   where
     queryWithToken = case session of
-                       AnonymousSession _             -> query
-                       LoginSession _ (BzToken token) -> ("token", Just token) : query
+                       AnonymousSession _                   -> query
+                       LoginSession _ (BugzillaToken token) -> ("token", Just token) : query
 
 data BzError = BzError Int String
                deriving (Eq, Show)
@@ -93,10 +94,10 @@ handleError :: String -> BL.ByteString -> IO b
 handleError parseError body = do
   let mError = eitherDecode body
   case mError of
-    Left _                   -> throw $ BzJSONParseFailure parseError
-    Right (BzError code msg) -> throw $ BzAPIError code msg
+    Left _                   -> throw $ BugzillaJSONParseError parseError
+    Right (BzError code msg) -> throw $ BugzillaAPIError code msg
 
-sendBzRequest :: FromJSON a => BzSession -> Request -> IO a
+sendBzRequest :: FromJSON a => BugzillaSession -> Request -> IO a
 sendBzRequest session req = runResourceT $ do
   response <- liftIO $ httpLbs req . bzManager . bzContext $ session
   let mResult = eitherDecode $ responseBody response
