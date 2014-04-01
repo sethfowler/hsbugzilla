@@ -21,10 +21,10 @@ main = withBzContext "bugzilla.mozilla.org" $ \ctx -> do
 runTest :: BzSession -> T.Text -> IO ()
 runTest session user = do
   --let search = AssignedToField .==. user
-  {-
-  let search = FlagRequesteeField .==. user .&&. Flags `contains` "needinfo"
+  let search = FlagRequesteeField .==. user .&&. FlagsField `contains` "needinfo"
   bugs <- searchBugs session search
   mapM_ print bugs
-  -}
+  {-
   h <- getHistory session 35168
   print h
+  -}

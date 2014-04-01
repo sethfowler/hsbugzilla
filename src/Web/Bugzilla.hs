@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -327,6 +328,7 @@ instance FromJSON HistoryEntry where
 
 data Change
   = TextFieldChange (Field T.Text) (Modification T.Text)
+  | ListFieldChange (Field [T.Text]) (Modification [T.Text])
   | IntFieldChange (Field Int) (Modification Int)
   | TimeFieldChange (Field UTCTime) (Modification UTCTime)
   | BoolFieldChange (Field Bool) (Modification Bool)
@@ -359,7 +361,7 @@ instance FromJSON Change where
       "everconfirmed"          -> BoolFieldChange EverConfirmedField <$> parseModification v
       "flagtypes.name"         -> TextFieldChange FlagsField <$> parseModification v
       "bug_group"              -> TextFieldChange GroupField <$> parseModification v
-      "keywords"               -> TextFieldChange KeywordsField <$> parseModification v
+      "keywords"               -> ListFieldChange KeywordsField <$> parseModification v
       "op_sys"                 -> TextFieldChange OperatingSystemField <$> parseModification v
       "platform"               -> TextFieldChange HardwareField <$> parseModification v
       "priority"               -> TextFieldChange PriorityField <$> parseModification v
@@ -404,9 +406,12 @@ instance ToModification T.Text Int where
                           Right (i, _) -> return $ Just i
   
 instance ToModification T.Text Bool where
-   toMod v | v == "0"  = return $ Just False
-           | v == "1"  = return $ Just True
-           | otherwise = mzero
+  toMod v | v == "0"  = return $ Just False
+          | v == "1"  = return $ Just True
+          | otherwise = mzero
+
+instance ToModification T.Text [T.Text] where
+  toMod v = return . Just $ T.splitOn ", " v
 
 -- Note that we make the (possibly unwise) assumption that Bugzilla
 -- returns the comments in order. If it turns out that's not true, we

@@ -42,7 +42,7 @@ data Field a where
   FlagSetterField               :: Field BzUserEmail      -- Flag Setter
   FlagsField                    :: Field T.Text           -- Flags
   GroupField                    :: Field T.Text           -- Group
-  KeywordsField                 :: Field T.Text           -- Keywords
+  KeywordsField                 :: Field [T.Text]         -- Keywords
   ChangedField                  :: Field UTCTime          -- Changed
   CommentCountField             :: Field Int              -- Number of Comments
   OperatingSystemField          :: Field T.Text           -- OS
