@@ -1,6 +1,11 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Operators which can be used to construct queries for Bugzilla.
+--   These operators are intended to be typesafe: you should not be
+--   able to construct a query that causes Bugzilla to return an
+--   error. If you *are* able to construct an erroneous query, please
+--   report a bug.
 module Web.Bugzilla.Internal.Search
 ( FieldType
 , SearchTerm (..)
@@ -33,6 +38,7 @@ data SearchTerm where
   UnaryOp  :: FieldType a => T.Text -> Field a -> SearchTerm
   BinaryOp :: (FieldType a, FieldType b) => T.Text -> Field a -> b -> SearchTerm
 
+-- | A Boolean expression which can be used to query Bugzilla.
 data SearchExpression
   = And [SearchExpression]
   | Or [SearchExpression]

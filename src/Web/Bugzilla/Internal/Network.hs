@@ -33,6 +33,9 @@ import Network.HTTP.Types.URI (QueryText, encodePathSegments, renderQueryText)
 
 type BugzillaServer  = T.Text
 
+-- | Holds information about a 'BugzillaServer' and manages outgoing
+-- connections. You can use 'newBugzillaContext' or
+-- 'withBugzillaContext' to create one.
 data BugzillaContext = BugzillaContext
   { bzServer  :: BugzillaServer
   , bzManager :: Manager
@@ -44,8 +47,10 @@ instance FromJSON BugzillaToken where
   parseJSON (Object v) = BugzillaToken <$> v .: "token"
   parseJSON _          = mzero
 
+-- | A session for Bugzilla queries. Use 'anonymousSession' and
+-- 'loginSession', as appropriate, to create one.
 data BugzillaSession = AnonymousSession BugzillaContext
-               | LoginSession BugzillaContext BugzillaToken
+                     | LoginSession BugzillaContext BugzillaToken
 
 bzContext :: BugzillaSession -> BugzillaContext
 bzContext (AnonymousSession ctx) = ctx

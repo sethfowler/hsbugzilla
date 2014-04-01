@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.Bugzilla.Search
-( Field (..)
-, SearchExpression
-, (.==.)
+( 
+  -- * Search operators
+  (.==.)
 , (./=.)
 , (.<.)
 , (.<=.)
@@ -27,6 +27,10 @@ module Web.Bugzilla.Search
 , (.&&.)
 , (.||.)
 , not'
+
+  -- * Search expressions
+, Field (..)
+, SearchExpression
 ) where
 
 import qualified Data.Text as T

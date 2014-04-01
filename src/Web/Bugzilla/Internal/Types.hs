@@ -52,6 +52,9 @@ type FlagId       = Int
 type FlagType     = Int
 type UserEmail    = T.Text
 
+-- | A field which you can search by using 'Web.Bugzilla.searchBugs' or track
+--   changes to using 'Web.Bugzilla.getHistory'. To get a human-readable name for
+--   a field, use 'fieldName'.
 data Field a where
   AliasField                    :: Field T.Text           -- Alias
   AssignedToField               :: Field UserEmail        -- Assignee
@@ -168,6 +171,7 @@ instance Show (Field a) where
   show VotesField                    = "VotesField"
   show (CustomField name)            = "CustomField " ++ show name
 
+-- | Provides a human-readable name for a 'Field'.
 fieldName :: Field a -> T.Text
 fieldName AliasField                    = "Alias"
 fieldName AssignedToField               = "Assigned to"
@@ -278,6 +282,7 @@ searchFieldName VersionField                  = "version"
 searchFieldName VotesField                    = "votes"
 searchFieldName (CustomField name)            = name
 
+-- | A Bugzilla user.
 data User = User
   { userId       :: !UserId
   , userEmail    :: T.Text
@@ -300,6 +305,7 @@ instance FromJSON UserList where
   parseJSON (Object v) = UserList <$> v .: "users"
   parseJSON _          = mzero
 
+-- | Flags, which may be set on an attachment or on a bug directly.
 data Flag = Flag
   { flagId               :: !FlagId
   , flagTypeId           :: !FlagType
@@ -323,6 +329,7 @@ instance FromJSON Flag where
          <*> v .:? "requestee"
   parseJSON _ = mzero
   
+-- | A Bugzilla bug.
 data Bug = Bug
   { bugId                  :: !BugId
   , bugAlias               :: Maybe T.Text
@@ -426,6 +433,7 @@ instance FromJSON BugList where
   parseJSON (Object v) = BugList <$> v .: "bugs"
   parseJSON _          = mzero
 
+-- | An attachment to a bug.
 data Attachment = Attachment
   { attachmentId             :: !AttachmentId
   , attachmentBugId          :: !BugId
@@ -478,6 +486,8 @@ instance FromJSON AttachmentList where
       _                                   -> mzero
   parseJSON _ = mzero
 
+-- | A bug comment. To display these the way Bugzilla does, you'll
+-- need to call 'getUser' and use the 'userRealName' for each user.
 data Comment = Comment
   { commentId           :: !CommentId
   , commentBugId        :: !BugId
@@ -524,6 +534,7 @@ addCount vs = Array $ V.zipWith addCount' (V.enumFromN 0 $ V.length vs) vs
    addCount' c (Object v) = Object $ H.insert "count" (Number $ fromIntegral c) v
    addCount' _ v          = v
 
+-- | History information for a bug.
 data History = History
   { historyBugId   :: !BugId
   , historyEvents  :: [HistoryEvent]
@@ -538,10 +549,12 @@ instance FromJSON History where
       _ -> mzero
   parseJSON _ = mzero
   
+-- | An event in a bug's history.
 data HistoryEvent = HistoryEvent
-  { historyEventTime    :: UTCTime
-  , historyEventUser    :: UserEmail
-  , historyEventChanges :: [Change]
+  { historyEventTime    :: UTCTime   -- ^ When the event occurred.
+  , historyEventUser    :: UserEmail -- ^ Which user was responsible.
+  , historyEventChanges :: [Change]  -- ^ All the changes which are
+                                     --   part of this event.
   } deriving (Eq, Show)
 
 instance FromJSON HistoryEvent where
@@ -550,6 +563,9 @@ instance FromJSON HistoryEvent where
                                       <*> v .: "changes"
   parseJSON _ = mzero
 
+-- | A single change which is part of an event. Different constructors
+--   are used according to the type of the field. The 'Modification'
+--   describes the value of the field before and after the change.
 data Change
   = TextFieldChange (Field T.Text) (Modification T.Text)
   | ListFieldChange (Field [T.Text]) (Modification [T.Text])
@@ -608,6 +624,7 @@ instance FromJSON Change where
       name                     -> TextFieldChange (CustomField name) <$> parseModification v
   parseJSON _ = mzero
                
+-- | A description of how a field changed during a 'HistoryEvent'.
 data (Eq a, Show a) => Modification a = Modification
   { modRemoved      :: Maybe a
   , modAdded        :: Maybe a
