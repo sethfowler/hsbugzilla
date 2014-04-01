@@ -30,7 +30,7 @@ module Web.Bugzilla
 , Attachment (..)
 , Comment (..)
 , History (..)
-, HistoryEntry (..)
+, HistoryEvent (..)
 , Change (..)
 , Modification (..)
 , fieldName
@@ -42,6 +42,9 @@ module Web.Bugzilla
 , getAttachments
 , getComments
 , getHistory
+, searchUsers
+, getUser
+, getUserById
 ) where
 
 import Control.Exception (bracket, throw, try)
@@ -72,7 +75,6 @@ loginSession ctx user password = do
                     ("password", Just password)]
       session = anonymousSession ctx
       req = newBzRequest session ["login"] loginQuery
-  print $ requestUrl req
   eToken <- try $ sendBzRequest session req
   return $ case eToken of
              Left (BugzillaAPIError 300 _) -> Nothing
@@ -89,7 +91,6 @@ searchBugs :: BugzillaSession -> SearchExpression -> IO [Bug]
 searchBugs session search = do
   let searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] searchQuery
-  print $ requestUrl req
   (BugList bugs) <- sendBzRequest session req
   return bugs
 
@@ -99,14 +100,12 @@ searchBugsWithLimit session limit offset search = do
                     ("offset", Just $ intAsText offset)]
       searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] (limitQuery ++ searchQuery)
-  print $ requestUrl req
   (BugList bugs) <- sendBzRequest session req
   return bugs
 
 getBug :: BugzillaSession -> BugId -> IO (Maybe Bug)
 getBug session bid = do
   let req = newBzRequest session ["bug", intAsText bid] []
-  print $ requestUrl req
   (BugList bugs) <- sendBzRequest session req
   case bugs of
     [bug] -> return $ Just bug
@@ -117,7 +116,6 @@ getBug session bid = do
 getAttachment :: BugzillaSession -> AttachmentId -> IO (Maybe Attachment)
 getAttachment session aid = do
   let req = newBzRequest session ["bug", "attachment", intAsText aid] []
-  print $ requestUrl req
   (AttachmentList as) <- sendBzRequest session req
   case as of
     [a] -> return $ Just a
@@ -128,19 +126,42 @@ getAttachment session aid = do
 getAttachments :: BugzillaSession -> BugId -> IO [Attachment]
 getAttachments session bid = do
   let req = newBzRequest session ["bug", intAsText bid, "attachment"] []
-  print $ requestUrl req
   (AttachmentList as) <- sendBzRequest session req
   return as
 
 getComments :: BugzillaSession -> BugId -> IO [Comment]
 getComments session bid = do
   let req = newBzRequest session ["bug", intAsText bid, "comment"] []
-  print $ requestUrl req
   (CommentList as) <- sendBzRequest session req
   return as
 
 getHistory :: BugzillaSession -> BugId -> IO History
 getHistory session bid = do
   let req = newBzRequest session ["bug", intAsText bid, "history"] []
-  print $ requestUrl req
   sendBzRequest session req
+
+searchUsers :: BugzillaSession -> T.Text -> IO [User]
+searchUsers session text = do
+  let req = newBzRequest session ["user"] [("match", Just text)]
+  (UserList users) <- sendBzRequest session req
+  return users
+
+getUser :: BugzillaSession -> UserEmail -> IO (Maybe User)
+getUser session user = do
+  let req = newBzRequest session ["user", user] []
+  (UserList users) <- sendBzRequest session req
+  case users of
+    [u] -> return $ Just u
+    []  -> return Nothing
+    _   -> throw $ BugzillaUnexpectedValue
+                   "Request for a single user returned multiple users"
+
+getUserById :: BugzillaSession -> UserId -> IO (Maybe User)
+getUserById session uid = do
+  let req = newBzRequest session ["user", intAsText uid] []
+  (UserList users) <- sendBzRequest session req
+  case users of
+    [u] -> return $ Just u
+    []  -> return Nothing
+    _   -> throw $ BugzillaUnexpectedValue
+                   "Request for a single user returned multiple users"

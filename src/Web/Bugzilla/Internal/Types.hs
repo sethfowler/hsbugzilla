@@ -15,6 +15,7 @@ module Web.Bugzilla.Internal.Types
 , UserEmail
 , Field (..)
 , User (..)
+, UserList (..)
 , Flag (..)
 , Bug (..)
 , BugList (..)
@@ -23,7 +24,7 @@ module Web.Bugzilla.Internal.Types
 , Comment (..)
 , CommentList (..)
 , History (..)
-, HistoryEntry (..)
+, HistoryEvent (..)
 , Change (..)
 , Modification (..)
 , fieldName
@@ -292,6 +293,13 @@ instance FromJSON User where
          <*> v .: "real_name"
   parseJSON _ = mzero
 
+data UserList = UserList [User]
+                deriving (Eq, Show)
+
+instance FromJSON UserList where
+  parseJSON (Object v) = UserList <$> v .: "users"
+  parseJSON _          = mzero
+
 data Flag = Flag
   { flagId               :: !FlagId
   , flagTypeId           :: !FlagType
@@ -518,7 +526,7 @@ addCount vs = Array $ V.zipWith addCount' (V.enumFromN 0 $ V.length vs) vs
 
 data History = History
   { historyBugId   :: !BugId
-  , historyEntries :: [HistoryEntry]
+  , historyEvents  :: [HistoryEvent]
   } deriving (Eq, Show)
 
 instance FromJSON History where
@@ -530,14 +538,14 @@ instance FromJSON History where
       _ -> mzero
   parseJSON _ = mzero
   
-data HistoryEntry = HistoryEntry
-  { historyEntryWhen    :: UTCTime
-  , historyEntryWho     :: UserEmail
-  , historyEntryChanges :: [Change]
+data HistoryEvent = HistoryEvent
+  { historyEventTime    :: UTCTime
+  , historyEventUser    :: UserEmail
+  , historyEventChanges :: [Change]
   } deriving (Eq, Show)
 
-instance FromJSON HistoryEntry where
-  parseJSON (Object v) = HistoryEntry <$> v .: "when"
+instance FromJSON HistoryEvent where
+  parseJSON (Object v) = HistoryEvent <$> v .: "when"
                                       <*> v .: "who"
                                       <*> v .: "changes"
   parseJSON _ = mzero

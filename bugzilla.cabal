@@ -21,7 +21,7 @@ Flag BuildDemo
   Default:      False
 
 library
-  ghc-options:         -Wall
+  ghc-options:         -O -Wall
   exposed-modules:     Web.Bugzilla,
                        Web.Bugzilla.Search
   other-modules:       Web.Bugzilla.Internal.Network,
@@ -53,7 +53,7 @@ executable bugzilla
   else
     buildable:         False
 
-  ghc-options:         -Wall
+  ghc-options:         -O -Wall
   main-is:             BugzillaDemo.hs
   build-depends:       base >=4.6 && <4.7,
                        bugzilla,

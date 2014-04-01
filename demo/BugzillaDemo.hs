@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import Control.Applicative
+import Control.Exception (bracket)
 import Control.Monad
 import Data.Maybe
 import qualified Data.Text as T
@@ -18,27 +19,37 @@ main = dispatch Nothing Nothing =<< getArgs
 dispatch :: Maybe UserEmail -> Maybe BugzillaServer -> [String] -> IO ()
 dispatch Nothing s ("--login" : user : as)    = dispatch (Just $ T.pack user) s as
 dispatch l Nothing ("--server" : server : as) = dispatch l (Just $ T.pack server) as
-dispatch l s ["--assigned-to", user]         = withBz l s $ doAssignedTo (T.pack user)
-dispatch l s ["--requests", user]            = withBz l s $ doRequests (T.pack user)
-dispatch l s ["--history", bug]              = withBz l s $ doHistory (read bug)
+dispatch l s ["--assigned-to", user]          = withBz l s $ doAssignedTo (T.pack user)
+dispatch l s ["--requests", user]             = withBz l s $ doRequests (T.pack user)
+dispatch l s ["--history", bug, n]            = withBz l s $ doHistory (read bug) (read n)
 dispatch _ _ _                                = usage
 
 usage :: IO ()
-usage = hPutStrLn stderr "Use --login, --server, --assigned-to, --requests, or --history"
+usage = hPutStrLn stderr "Connection options:"
+     >> hPutStrLn stderr "  --server [domain name] - REQUIRED. The Bugzilla server to access."
+     >> hPutStrLn stderr "  --login [user email]   - The user to log in with."
+     >> hPutStrLn stderr ""
+     >> hPutStrLn stderr "Bugzilla queries:"
+     >> hPutStrLn stderr "  --assigned-to [user email] - List bugs assigned to the user."
+     >> hPutStrLn stderr "  --requests [user email]    - List requests for the user."
+     >> hPutStrLn stderr "  --history [bug number] [n] - List the most recent 'n' changes to the bug."
 
 withBz :: Maybe UserEmail -> Maybe BugzillaServer -> (BugzillaSession -> IO ()) -> IO ()
-withBz mLogin mServer f = withBugzillaContext server $ \ctx ->
-  case mLogin of
-    Just login -> do hPutStrLn stderr "Enter password: "
-                     password <- T.pack <$> getLine
-                     mSession <- loginSession ctx login password
-                     case mSession of
-                       Just session -> f session
-                       Nothing      -> do hPutStrLn stderr "Login failed. Falling back to anonymous session."
-                                          f $ anonymousSession ctx
-    Nothing -> f $ anonymousSession ctx
-  where
-    server = fromMaybe "bugzilla.mozilla.org" mServer
+withBz mLogin mServer f = do
+  let server = case mServer of
+                 Just s  -> s
+                 Nothing -> error "Please specify a server with '--server'"
+  withBugzillaContext server $ \ctx ->
+    case mLogin of
+      Just login -> do hPutStrLn stderr "Enter password: "
+                       password <- T.pack <$> withEcho False getLine
+                       mSession <- loginSession ctx login password
+                       case mSession of
+                         Just session -> do hPutStrLn stderr "Login successful."
+                                            f session
+                         Nothing      -> do hPutStrLn stderr "Login failed. Falling back to anonymous session."
+                                            f $ anonymousSession ctx
+      Nothing -> f $ anonymousSession ctx
                      
   
 doAssignedTo :: UserEmail -> BugzillaSession -> IO ()
@@ -84,31 +95,53 @@ doRequests user session = do
     hasReviewFlag f   = flagRequestee f == Just user && flagName f == "review"
     hasFeedbackFlag f = flagRequestee f == Just user && flagName f == "feedback"
 
-doHistory :: BugId -> BugzillaSession -> IO ()
-doHistory bug session = do
+doHistory :: BugId -> Int -> BugzillaSession -> IO ()
+doHistory bug count session = do
     comments <- getComments session bug
     history <- getHistory session bug
-    let recentEventsRev = takeRecent 10 (reverse comments) (reverse $ historyEntries history)
+    recentEventsRev <- takeRecent count (reverse comments)
+                                        (reverse $ historyEvents history)
     mapM_ putStrLn (reverse recentEventsRev)
   where
-    takeRecent 0 _ _ = []
+    takeRecent :: Int -> [Comment] -> [HistoryEvent] -> IO [String]
+    takeRecent 0 _ _ = return []
     takeRecent n (c:cs) (e:es)
-      | commentCreationTime c `diffUTCTime` historyEntryWhen e >= 0 = showComment c : takeRecent (n - 1) cs (e:es)
-      | otherwise                                                   = showEvent e : takeRecent (n - 1) (c:cs) es
-    takeRecent n cs@(_:_) [] = map showComment $ take n cs
-    takeRecent n [] es@(_:_) = map showEvent $ take n es
-    takeRecent _ [] []       = []
+      | commentCreationTime c `diffUTCTime` historyEventTime e >= 0 = (:) <$> showComment c
+                                                                          <*> takeRecent (n - 1) cs (e:es)
+      | otherwise                                                   = (:) <$> showEvent e
+                                                                          <*> takeRecent (n - 1) (c:cs) es
+    takeRecent n cs@(_:_) [] = mapM showComment $ take n cs
+    takeRecent n [] es@(_:_) = mapM showEvent $ take n es
+    takeRecent _ [] []       = return []
 
-    showComment (Comment {..}) = "(" ++ show commentId ++ ") " ++ T.unpack commentCreator ++ "  " ++ show commentCreationTime
-                              ++ "\n" ++ (unlines . map ("  " ++) . lines . T.unpack $ commentText)
+    -- FIXME: showComment and showEvent will call getUser for the same
+    -- user over and over again. You should never do this in a real application.
+    showComment (Comment {..}) = do
+      user <- getUser session commentCreator
+      let commentUserRealName = fromMaybe commentCreator $ userRealName <$> user
+      let commentUserEmail = fromMaybe commentCreator $ userEmail <$> user
+      return $ "(" ++ show commentId ++ ") " ++ T.unpack commentUserRealName
+            ++ " <" ++ T.unpack commentUserEmail ++ "> " ++ show commentCreationTime
+            ++ "\n" ++ (unlines . map ("  " ++) . lines . T.unpack $ commentText)
 
-    showEvent (HistoryEntry {..}) = "(" ++ T.unpack historyEntryWho ++ ")\n" ++ concatMap showChange historyEntryChanges
+    showEvent (HistoryEvent {..}) = do
+      user <- getUser session historyEventUser
+      let eventUserRealName = fromMaybe historyEventUser $ userRealName <$> user
+      let eventUserEmail = fromMaybe historyEventUser $ userEmail <$> user
+      return $ T.unpack eventUserRealName ++ " <" ++ T.unpack eventUserEmail ++ ">\n"
+            ++ concatMap showChange historyEventChanges
 
-    showChange (TextFieldChange f (Modification r a aid)) = "  " ++ showField f ++ ": " ++ showMod r ++ " -> " ++ showMod a ++ showAid aid ++ "\n"
-    showChange (ListFieldChange f (Modification r a aid)) = "  " ++ showField f ++ ": " ++ showMod r ++ " -> " ++ showMod a ++ showAid aid ++ "\n"
-    showChange (IntFieldChange f (Modification r a aid))  = "  " ++ showField f ++ ": " ++ showMod r ++ " -> " ++ showMod a ++ showAid aid ++ "\n"
-    showChange (TimeFieldChange f (Modification r a aid)) = "  " ++ showField f ++ ": " ++ showMod r ++ " -> " ++ showMod a ++ showAid aid ++ "\n"
-    showChange (BoolFieldChange f (Modification r a aid)) = "  " ++ showField f ++ ": " ++ showMod r ++ " -> " ++ showMod a ++ showAid aid ++ "\n"
+    showChange (TextFieldChange f (Modification r a aid)) = showChange' f r a aid
+    showChange (ListFieldChange f (Modification r a aid)) = showChange' f r a aid
+    showChange (IntFieldChange f (Modification r a aid))  = showChange' f r a aid
+    showChange (TimeFieldChange f (Modification r a aid)) = showChange' f r a aid
+    showChange (BoolFieldChange f (Modification r a aid)) = showChange' f r a aid
+
+    showChange' f r a aid = "  " ++ showField f ++ ": "
+                         ++ showMod r ++ " -> " ++ showMod a
+                         ++ showAid aid ++ "\n"
+
+    showField = T.unpack . fieldName
 
     showMod :: Show a => Maybe a -> String
     showMod (Just v) = show v
@@ -118,4 +151,8 @@ doHistory bug session = do
     showAid (Just aid) = " (Attachment " ++ show aid ++ ")"
     showAid Nothing    = ""
 
-    showField = T.unpack . fieldName
+withEcho :: Bool -> IO a -> IO a
+withEcho echo action =
+    bracket (hGetEcho stdin)
+            (hSetEcho stdin)
+            (const $ hSetEcho stdin echo >> action)
