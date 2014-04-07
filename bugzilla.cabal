@@ -21,7 +21,7 @@ cabal-version:       >=1.10
 source-repository head
   type:     git
   location: https://github.com/sethfowler/hsbugzilla.git
-  tag:      0.1
+  tag:      0.2
 
 flag BuildDemo
   description:  Build the 'bugzilla' demo program
