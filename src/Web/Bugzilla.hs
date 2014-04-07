@@ -35,7 +35,9 @@ module Web.Bugzilla
 
   -- * Querying Bugzilla
 , searchBugs
+, searchBugs'
 , searchBugsWithLimit
+, searchBugsWithLimit'
 , getBug
 , getAttachment
 , getAttachments
@@ -120,13 +122,27 @@ anonymousSession ctx = AnonymousSession ctx
 intAsText :: Int -> T.Text
 intAsText = T.pack . show
 
--- | Search Bugzilla and returns a list of 'Bug's. The 'SearchExpression'
+-- | Searches Bugzilla and returns a list of 'Bug's. The 'SearchExpression'
 -- can be constructed conveniently using the operators in "Web.Bugzilla.Search".
 searchBugs :: BugzillaSession -> SearchExpression -> IO [Bug]
 searchBugs session search = do
   let searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] searchQuery
   (BugList bugs) <- sendBzRequest session req
+  return bugs
+
+-- | Like 'searchBugs', but returns a list of 'BugId's. You can
+-- retrieve the 'Bug' for each 'BugId' using 'getBug'. The combination
+-- of 'searchBugs'' and 'getBug' is much less efficient than
+-- 'searchBugs'. 'searchBugs'' is suitable for cases where you won't need to call
+-- 'getBug' most of the time - for example, polling to determine whether the
+-- set of bugs returned by a query has changed.
+searchBugs' :: BugzillaSession -> SearchExpression -> IO [BugId]
+searchBugs' session search = do
+  let fieldsQuery = [("include_fields", Just "id")]
+      searchQuery = evalSearchExpr search
+      req = newBzRequest session ["bug"] (fieldsQuery ++ searchQuery)
+  (BugIdList bugs) <- sendBzRequest session req
   return bugs
 
 -- | Search Bugzilla and returns a limited number of results. You can
@@ -146,6 +162,22 @@ searchBugsWithLimit session limit offset search = do
       searchQuery = evalSearchExpr search
       req = newBzRequest session ["bug"] (limitQuery ++ searchQuery)
   (BugList bugs) <- sendBzRequest session req
+  return bugs
+
+-- | Like 'searchBugsWithLimit', but returns a list of 'BugId's. See
+-- 'searchBugs'' for more discussion.
+searchBugsWithLimit' :: BugzillaSession
+                     -> Int  -- ^ The maximum number of results to return.
+                     -> Int  -- ^ The offset from the first result to start from.
+                     -> SearchExpression
+                     -> IO [BugId]
+searchBugsWithLimit' session limit offset search = do
+  let fieldsQuery = [("include_fields", Just "id")]
+      limitQuery = [("limit", Just $ intAsText limit),
+                    ("offset", Just $ intAsText offset)]
+      searchQuery = evalSearchExpr search
+      req = newBzRequest session ["bug"] (fieldsQuery ++ limitQuery ++ searchQuery)
+  (BugIdList bugs) <- sendBzRequest session req
   return bugs
 
 -- | Retrieve a bug by bug number.

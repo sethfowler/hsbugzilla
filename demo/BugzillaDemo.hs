@@ -20,6 +20,7 @@ dispatch :: Maybe UserEmail -> Maybe BugzillaServer -> [String] -> IO ()
 dispatch Nothing s ("--login" : user : as)    = dispatch (Just $ T.pack user) s as
 dispatch l Nothing ("--server" : server : as) = dispatch l (Just $ T.pack server) as
 dispatch l s ["--assigned-to", user]          = withBz l s $ doAssignedTo (T.pack user)
+dispatch l s ["--assigned-to-brief", user]    = withBz l s $ doAssignedToBrief (T.pack user)
 dispatch l s ["--requests", user]             = withBz l s $ doRequests (T.pack user)
 dispatch l s ["--history", bug, n]            = withBz l s $ doHistory (read bug) (read n)
 dispatch _ _ _                                = usage
@@ -30,6 +31,7 @@ usage = hPutStrLn stderr "Connection options:"
      >> hPutStrLn stderr "  --login [user email]   - The user to log in with."
      >> hPutStrLn stderr ""
      >> hPutStrLn stderr "Bugzilla queries:"
+     >> hPutStrLn stderr "  --assigned-to [user email] - List bugs assigned to the user."
      >> hPutStrLn stderr "  --assigned-to [user email] - List bugs assigned to the user."
      >> hPutStrLn stderr "  --requests [user email]    - List requests for the user."
      >> hPutStrLn stderr "  --history [bug number] [n] - List the most recent 'n' changes to the bug."
@@ -61,6 +63,12 @@ doAssignedTo user session = do
     showBug (Bug {..}) = putStrLn $ show bugId ++ ": " ++ show bugSummary
                                  ++ " [" ++ T.unpack bugStatus ++ ": " ++ T.unpack bugResolution ++ "] Updated: "
                                  ++ show bugLastChangeTime
+
+doAssignedToBrief :: UserEmail -> BugzillaSession -> IO ()
+doAssignedToBrief user session = do
+    let search = AssignedToField .==. user
+    bugs <- searchBugs' session search
+    mapM_ print bugs
 
 doRequests :: UserEmail -> BugzillaSession -> IO ()
 doRequests user session = do

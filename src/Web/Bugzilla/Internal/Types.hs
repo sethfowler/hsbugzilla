@@ -20,6 +20,7 @@ module Web.Bugzilla.Internal.Types
 , Flag (..)
 , Bug (..)
 , BugList (..)
+, BugIdList (..)
 , Attachment (..)
 , AttachmentList (..)
 , Comment (..)
@@ -433,6 +434,16 @@ data BugList = BugList [Bug]
 
 instance FromJSON BugList where
   parseJSON (Object v) = BugList <$> v .: "bugs"
+  parseJSON _          = mzero
+
+data BugIdList = BugIdList [BugId]
+                 deriving (Eq, Show)
+
+instance FromJSON BugIdList where
+  parseJSON (Object v) = do
+    bugs <- v .: "bugs"
+    bugIds <- mapM (.: "id") bugs
+    return $ BugIdList bugIds
   parseJSON _          = mzero
 
 -- | An attachment to a bug.

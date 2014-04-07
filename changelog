@@ -1,7 +1,13 @@
+0.2.1.0
+
+	* Added searchBugs' and searchBugsWithLimit', variations which return
+	only a list of BugIds. These are more suitable for polling than the
+	existing functions.
+
 0.2.0.0
 
 	* History events now have a sequential id, just like comments.
 
-	* When using an anonymous session, Bugzilla does not return email addresses for users.
-	  To accomodate this, the User type now stores email addresses as type
-	  'Maybe UserEmail'.
+	* When using an anonymous session, Bugzilla does not return email
+	addresses for users.  To accomodate this, the User type now stores email
+	addresses as type 'Maybe UserEmail'.
