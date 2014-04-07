@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                bugzilla
-version:             0.1.0.1
+version:             0.2.0.0
 synopsis:            A Haskell interface to the Bugzilla native REST API
 description:         This package is designed to provide an easy-to-use, typesafe
                      interface to querying Bugzilla from Haskell.
@@ -15,6 +15,7 @@ copyright:           Copyright 2014 Seth Fowler
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
+                     changelog
 cabal-version:       >=1.10
 
 source-repository head

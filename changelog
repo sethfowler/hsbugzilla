@@ -1,0 +1,7 @@
+0.2.0.0
+
+	* History events now have a sequential id, just like comments.
+
+	* When using an anonymous session, Bugzilla does not return email addresses for users.
+	  To accomodate this, the User type now stores email addresses as type
+	  'Maybe UserEmail'.

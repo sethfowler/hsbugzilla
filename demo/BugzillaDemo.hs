@@ -119,16 +119,17 @@ doHistory bug count session = do
     showComment (Comment {..}) = do
       user <- getUser session commentCreator
       let commentUserRealName = fromMaybe commentCreator $ userRealName <$> user
-      let commentUserEmail = fromMaybe commentCreator $ userEmail <$> user
-      return $ "(" ++ show commentId ++ ") " ++ T.unpack commentUserRealName
+      let commentUserEmail = fromMaybe commentCreator $ userEmail =<< user
+      return $ "(Comment " ++ show commentCount ++ ") " ++ T.unpack commentUserRealName
             ++ " <" ++ T.unpack commentUserEmail ++ "> " ++ show commentCreationTime
             ++ "\n" ++ (unlines . map ("  " ++) . lines . T.unpack $ commentText)
 
     showEvent (HistoryEvent {..}) = do
       user <- getUser session historyEventUser
       let eventUserRealName = fromMaybe historyEventUser $ userRealName <$> user
-      let eventUserEmail = fromMaybe historyEventUser $ userEmail <$> user
-      return $ T.unpack eventUserRealName ++ " <" ++ T.unpack eventUserEmail ++ ">\n"
+      let eventUserEmail = fromMaybe historyEventUser $ userEmail =<< user
+      return $ "(Event " ++ show historyEventId ++ ") " ++ T.unpack eventUserRealName
+            ++ " <" ++ T.unpack eventUserEmail ++ ">\n"
             ++ concatMap showChange historyEventChanges
 
     showChange (TextFieldChange f (Modification r a aid)) = showChange' f r a aid

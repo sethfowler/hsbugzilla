@@ -50,6 +50,7 @@ module Web.Bugzilla
 , AttachmentId
 , CommentId
 , UserId
+, EventId
 , FlagId
 , FlagType
 , UserEmail

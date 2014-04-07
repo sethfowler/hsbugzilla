@@ -10,6 +10,7 @@ module Web.Bugzilla.Internal.Types
 , AttachmentId
 , CommentId
 , UserId
+, EventId
 , FlagId
 , FlagType
 , UserEmail
@@ -48,6 +49,7 @@ type BugId        = Int
 type AttachmentId = Int
 type CommentId    = Int
 type UserId       = Int
+type EventId      = Int
 type FlagId       = Int
 type FlagType     = Int
 type UserEmail    = T.Text
@@ -285,7 +287,7 @@ searchFieldName (CustomField name)            = name
 -- | A Bugzilla user.
 data User = User
   { userId       :: !UserId
-  , userEmail    :: T.Text
+  , userEmail    :: Maybe UserEmail
   , userName     :: T.Text
   , userRealName :: T.Text
   } deriving (Eq, Ord, Show)
@@ -293,7 +295,7 @@ data User = User
 instance FromJSON User where
   parseJSON (Object v) =
     User <$> v .: "id"
-         <*> v .: "email"
+         <*> v .:? "email"
          <*> v .: "name"
          <*> v .: "real_name"
   parseJSON _ = mzero
@@ -500,7 +502,7 @@ data Comment = Comment
   } deriving (Eq, Show)
 
 instance FromJSON Comment where
-  parseJSON (Object v) = do
+  parseJSON (Object v) =
     Comment <$> v .: "id"
             <*> v .: "bug_id"
             <*> v .: "attachment_id"
@@ -545,22 +547,33 @@ instance FromJSON History where
     bugsVal <- v .: "bugs"
     case bugsVal of
       Array (V.toList -> [history]) ->
-        withObject "history" (\h -> History <$> h .: "id" <*> h .: "history") history
+        withObject "history"
+                   (\h -> History <$> h .: "id"
+                                  <*> parseHistoryEvents h)
+                   history
       _ -> mzero
   parseJSON _ = mzero
   
+parseHistoryEvents :: Object -> Parser [HistoryEvent]
+parseHistoryEvents h = do
+  events <- h .: "history"
+  withArray "event list" (\a -> parseJSON (addCount a)) events
+
 -- | An event in a bug's history.
 data HistoryEvent = HistoryEvent
-  { historyEventTime    :: UTCTime   -- ^ When the event occurred.
+  { historyEventId      :: EventId   -- ^ A sequential event id.
+  , historyEventTime    :: UTCTime   -- ^ When the event occurred.
   , historyEventUser    :: UserEmail -- ^ Which user was responsible.
   , historyEventChanges :: [Change]  -- ^ All the changes which are
                                      --   part of this event.
   } deriving (Eq, Show)
 
 instance FromJSON HistoryEvent where
-  parseJSON (Object v) = HistoryEvent <$> v .: "when"
-                                      <*> v .: "who"
-                                      <*> v .: "changes"
+  parseJSON (Object v) =
+    HistoryEvent <$> v .: "count"
+                 <*> v .: "when"
+                 <*> v .: "who"
+                 <*> v .: "changes"
   parseJSON _ = mzero
 
 -- | A single change which is part of an event. Different constructors
