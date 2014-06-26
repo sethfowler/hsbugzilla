@@ -1,6 +1,8 @@
 hsbugzilla
 ==========
 
+[![Build Status](https://travis-ci.org/sethfowler/hsbugzilla.png?branch=master)](https://travis-ci.org/sethfowler/hsbugzilla)
+
 A Haskell interface to the Bugzilla native REST API.
 
 Relevant links:

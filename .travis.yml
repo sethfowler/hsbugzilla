@@ -1,0 +1,8 @@
+language: haskell
+
+branches:
+  only:
+    - master
+
+script:
+  - cabal update && cabal install Cabal cabal-install && cabal configure --enable-tests && cabal build && cabal test
