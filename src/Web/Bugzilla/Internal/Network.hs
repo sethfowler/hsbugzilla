@@ -23,12 +23,11 @@ import Control.Monad.Trans.Resource (runResourceT)
 import Data.Aeson
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.Default (def)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Typeable
-import Network.HTTP.Conduit (Manager, Request(..), Response(..), host, httpLbs, path, queryString, secure)
+import Network.HTTP.Conduit (Manager, Request(..), Response(..), defaultRequest, host, httpLbs, path, queryString, secure)
 import Network.HTTP.Types.URI (QueryText, encodePathSegments, renderQueryText)
 
 type BugzillaServer  = T.Text
@@ -70,7 +69,7 @@ requestUrl req = "https://" <> host req <> path req <> queryString req
 
 sslRequest :: Request
 sslRequest =
-  def {
+  defaultRequest {
     secure = True,
     port   = 443
   }
