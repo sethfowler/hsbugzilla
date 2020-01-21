@@ -31,7 +31,7 @@ module Web.Bugzilla
 , BugzillaServer
 , BugzillaContext
 , BugzillaSession (..)
-, BugzillaToken
+, BugzillaToken (..)
 
   -- * Querying Bugzilla
 , searchBugs
@@ -46,7 +46,8 @@ module Web.Bugzilla
 , searchUsers
 , getUser
 , getUserById
-
+, newBzRequest
+, intAsText
 
 , BugId
 , AttachmentId

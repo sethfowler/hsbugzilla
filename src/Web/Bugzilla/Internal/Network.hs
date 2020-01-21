@@ -4,7 +4,7 @@
 module Web.Bugzilla.Internal.Network
 ( BugzillaServer
 , BugzillaContext (..)
-, BugzillaToken
+, BugzillaToken (..)
 , BugzillaSession (..)
 , BugzillaException (..)
 , QueryPart
