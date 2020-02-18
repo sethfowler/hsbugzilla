@@ -59,7 +59,7 @@ type UserEmail    = T.Text
 --   changes to using 'Web.Bugzilla.getHistory'. To get a human-readable name for
 --   a field, use 'fieldName'.
 data Field a where
-  AliasField                    :: Field T.Text           -- Alias
+  AliasField                    :: Field [T.Text]         -- Alias
   AssignedToField               :: Field UserEmail        -- Assignee
   AttachmentCreatorField        :: Field UserEmail        -- Attachment creator
   AttachmentDataField           :: Field T.Text           -- Attachment data
@@ -78,7 +78,7 @@ data Field a where
   CommentIsPrivateField         :: Field T.Text           -- Comment is private
   CommentTagsField              :: Field T.Text           -- Comment Tags
   CommenterField                :: Field UserEmail        -- Commenter
-  ComponentField                :: Field T.Text           -- Component
+  ComponentField                :: Field [T.Text]         -- Component
   ContentField                  :: Field T.Text           -- Content
   CreationDateField             :: Field UTCTime          -- Creation date
   DaysElapsedField              :: Field Int              -- Days since bug changed
@@ -331,24 +331,24 @@ instance FromJSON Flag where
          <*> v .: "modification_date"
          <*> v .:? "requestee"
   parseJSON _ = mzero
-  
+
 -- | A Bugzilla bug.
 data Bug = Bug
   { bugId                  :: !BugId
-  , bugAlias               :: Maybe T.Text
+  , bugAlias               :: Maybe [T.Text]
   , bugAssignedTo          :: UserEmail
   , bugAssignedToDetail    :: User
   , bugBlocks              :: [BugId]
   , bugCc                  :: [UserEmail]
   , bugCcDetail            :: [User]
   , bugClassification      :: T.Text
-  , bugComponent           :: T.Text
+  , bugComponent           :: [T.Text]
   , bugCreationTime        :: UTCTime
   , bugCreator             :: UserEmail
   , bugCreatorDetail       :: User
   , bugDependsOn           :: [BugId]
   , bugDupeOf              :: Maybe BugId
-  , bugFlags               :: [Flag]
+  , bugFlags               :: Maybe [Flag]
   , bugGroups              :: [T.Text]
   , bugIsCcAccessible      :: Bool
   , bugIsConfirmed         :: Bool
@@ -368,14 +368,14 @@ data Bug = Bug
   , bugSummary             :: T.Text
   , bugTargetMilestone     :: T.Text
   , bugUrl                 :: T.Text
-  , bugVersion             :: T.Text
+  , bugVersion             :: [T.Text]
   , bugWhiteboard          :: T.Text
   , bugCustomFields        :: H.HashMap T.Text T.Text
   } deriving (Eq, Show)
 
 instance FromJSON Bug where
   parseJSON (Object v) =
-      Bug <$> v .:  "id"
+      Bug <$> v .: "id"
           <*> v .:? "alias"
           <*> v .: "assigned_to"
           <*> v .: "assigned_to_detail"
@@ -389,7 +389,7 @@ instance FromJSON Bug where
           <*> v .: "creator_detail"
           <*> v .: "depends_on"
           <*> v .:? "dupe_of"
-          <*> v .: "flags"
+          <*> v .:? "flags"
           <*> v .: "groups"
           <*> v .: "is_cc_accessible"
           <*> v .: "is_confirmed"
@@ -602,7 +602,7 @@ instance FromJSON Change where
   parseJSON (Object v) = do
     changedField <- v .: "field_name"
     case changedField of
-      "alias"                  -> TextFieldChange AliasField <$> parseModification v
+      "alias"                  -> ListFieldChange AliasField <$> parseModification v
       "assigned_to"            -> TextFieldChange AssignedToField <$> parseModification v
       "attachments.submitter"  -> TextFieldChange AttachmentCreatorField <$> parseModification v
       "attach_data.thedata"    -> TextFieldChange AttachmentDataField <$> parseModification v
@@ -617,7 +617,7 @@ instance FromJSON Change where
       "cc"                     -> TextFieldChange CcField <$> parseModification v
       "is_cc_accessible"       -> BoolFieldChange CcListAccessibleField <$> parseModification v
       "classification"         -> TextFieldChange ClassificationField <$> parseModification v
-      "component"              -> TextFieldChange ComponentField <$> parseModification v
+      "component"              -> ListFieldChange ComponentField <$> parseModification v
       "content"                -> TextFieldChange ContentField <$> parseModification v
       "creation_time"          -> TimeFieldChange CreationDateField <$> parseModification v
       "days_elapsed"           -> IntFieldChange DaysElapsedField <$> parseModification v
