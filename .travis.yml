@@ -4,10 +4,11 @@ branches:
   only:
     - master
 
+cabal: 2.4
+
 cache:
   directories:
   - "$HOME/.cabal"
-  - "$HOME/.ghc"
 
 ghc:
 - 8.8.3
@@ -20,7 +21,7 @@ ghc:
 - 7.6.3
 
 install:
-- cabal install --only-dependencies
+- cabal new-update
 
 script:
-- cabal build
+- cabal new-build
