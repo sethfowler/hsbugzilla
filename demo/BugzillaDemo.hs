@@ -52,15 +52,15 @@ withBz mLogin mServer f = do
                          Nothing      -> do hPutStrLn stderr "Login failed. Falling back to anonymous session."
                                             f $ anonymousSession ctx
       Nothing -> f $ anonymousSession ctx
-                     
-  
+
+
 doAssignedTo :: UserEmail -> BugzillaSession -> IO ()
 doAssignedTo user session = do
     let search = AssignedToField .==. user
     bugs <- searchBugs session search
     mapM_ showBug bugs
   where
-    showBug (Bug {..}) = putStrLn $ show bugId ++ ": " ++ show bugSummary
+    showBug Bug {..} = putStrLn $ show bugId ++ ": " ++ show bugSummary
                                  ++ " [" ++ T.unpack bugStatus ++ ": " ++ T.unpack bugResolution ++ "] Updated: "
                                  ++ show bugLastChangeTime
 
@@ -85,17 +85,17 @@ doRequests user session = do
       mapM_ showFeedback $ filter (any hasFeedbackFlag . attachmentFlags) attachments
 
   where
-    showNeedinfo (Bug {..}) = do
+    showNeedinfo Bug {..} = do
       let flags = filter hasNeedinfoFlag bugFlags
       forM_ flags $ \flag ->
         putStrLn $ "[NEEDINFO] " ++ show bugId ++ ": " ++ show bugSummary
                 ++ " (" ++ show (flagSetter flag) ++ " " ++ show (flagCreationDate flag) ++ ")"
 
-    showReview (Attachment {..}) =
+    showReview Attachment {..} =
       putStrLn $ "[REVIEW] " ++ show attachmentBugId ++ ": " ++ show attachmentSummary
               ++ " (" ++ show attachmentCreator ++ " " ++ show attachmentCreationTime ++ ")"
 
-    showFeedback (Attachment {..}) =
+    showFeedback Attachment {..} =
       putStrLn $ "[FEEDBACK] " ++ show attachmentBugId ++ ": " ++ show attachmentSummary
               ++ " (" ++ show attachmentCreator ++ " " ++ show attachmentCreationTime ++ ")"
 
@@ -124,17 +124,17 @@ doHistory bug count session = do
 
     -- FIXME: showComment and showEvent will call getUser for the same
     -- user over and over again. You should never do this in a real application.
-    showComment (Comment {..}) = do
+    showComment Comment {..} = do
       user <- getUser session commentCreator
-      let commentUserRealName = fromMaybe commentCreator $ userRealName <$> user
+      let commentUserRealName = maybe commentCreator userRealName user
       let commentUserEmail = fromMaybe commentCreator $ userEmail =<< user
       return $ "(Comment " ++ show commentCount ++ ") " ++ T.unpack commentUserRealName
             ++ " <" ++ T.unpack commentUserEmail ++ "> " ++ show commentCreationTime
             ++ "\n" ++ (unlines . map ("  " ++) . lines . T.unpack $ commentText)
 
-    showEvent (HistoryEvent {..}) = do
+    showEvent HistoryEvent {..} = do
       user <- getUser session historyEventUser
-      let eventUserRealName = fromMaybe historyEventUser $ userRealName <$> user
+      let eventUserRealName = maybe historyEventUser userRealName user
       let eventUserEmail = fromMaybe historyEventUser $ userEmail =<< user
       return $ "(Event " ++ show historyEventId ++ ") " ++ T.unpack eventUserRealName
             ++ " <" ++ T.unpack eventUserEmail ++ ">\n"

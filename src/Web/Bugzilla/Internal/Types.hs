@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -301,7 +300,7 @@ instance FromJSON User where
          <*> v .: "real_name"
   parseJSON _ = mzero
 
-data UserList = UserList [User]
+newtype UserList = UserList [User]
                 deriving (Eq, Show)
 
 instance FromJSON UserList where
@@ -319,7 +318,7 @@ data Flag = Flag
   , flagModificationDate :: UTCTime
   , flagRequestee        :: Maybe UserEmail
   } deriving (Eq, Ord, Show)
-             
+
 instance FromJSON Flag where
   parseJSON (Object v) =
     Flag <$> v .: "id"
@@ -429,14 +428,14 @@ customFields = H.map stringifyCustomFields
 
     filterCustomFields k _ = "cf_" `T.isPrefixOf` k
 
-data BugList = BugList [Bug]
+newtype BugList = BugList [Bug]
                deriving (Eq, Show)
 
 instance FromJSON BugList where
   parseJSON (Object v) = BugList <$> v .: "bugs"
   parseJSON _          = mzero
 
-data BugIdList = BugIdList [BugId]
+newtype BugIdList = BugIdList [BugId]
                  deriving (Eq, Show)
 
 instance FromJSON BugIdList where
@@ -465,7 +464,7 @@ data Attachment = Attachment
   } deriving (Eq, Show)
 
 instance FromJSON Attachment where
-  parseJSON (Object v) = do
+  parseJSON (Object v) =
     Attachment <$> v .: "id"
                <*> v .: "bug_id"
                <*> v .: "file_name"
@@ -486,7 +485,7 @@ fromNumericBool :: Int -> Bool
 fromNumericBool 0 = False
 fromNumericBool _ = True
 
-data AttachmentList = AttachmentList [Attachment]
+newtype AttachmentList = AttachmentList [Attachment]
                       deriving (Eq, Show)
 
 instance FromJSON AttachmentList where
@@ -524,7 +523,7 @@ instance FromJSON Comment where
             <*> v .: "is_private"
   parseJSON _ = mzero
 
-data CommentList = CommentList [Comment]
+newtype CommentList = CommentList [Comment]
                    deriving (Eq, Show)
 
 instance FromJSON CommentList where
@@ -540,7 +539,7 @@ instance FromJSON CommentList where
 -- Note that we make the (possibly unwise) assumption that Bugzilla
 -- returns the comments in order. If it turns out that's not true, we
 -- can always sort by their 'id' to ensure correct results.
-addCount :: V.Vector Value -> Value 
+addCount :: V.Vector Value -> Value
 addCount vs = Array $ V.zipWith addCount' (V.enumFromN 0 $ V.length vs) vs
  where
    addCount' :: Int -> Value -> Value
@@ -564,11 +563,11 @@ instance FromJSON History where
                    history
       _ -> mzero
   parseJSON _ = mzero
-  
+
 parseHistoryEvents :: Object -> Parser [HistoryEvent]
 parseHistoryEvents h = do
   events <- h .: "history"
-  withArray "event list" (\a -> parseJSON (addCount a)) events
+  withArray "event list" (parseJSON . addCount) events
 
 -- | An event in a bug's history.
 data HistoryEvent = HistoryEvent
@@ -647,7 +646,7 @@ instance FromJSON Change where
       "votes"                  -> TextFieldChange VotesField <$> parseModification v
       name                     -> TextFieldChange (CustomField name) <$> parseModification v
   parseJSON _ = mzero
-               
+
 -- | A description of how a field changed during a 'HistoryEvent'.
 data (Eq a, Show a) => Modification a = Modification
   { modRemoved      :: Maybe a
@@ -669,7 +668,7 @@ instance ToModification T.Text Int where
           | otherwise = case TR.decimal v of
                           Left _       -> mzero
                           Right (i, _) -> return $ Just i
-  
+
 instance ToModification T.Text Bool where
   toMod v | v == "0"  = return $ Just False
           | v == "1"  = return $ Just True

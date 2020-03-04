@@ -40,7 +40,7 @@ data BugzillaContext = BugzillaContext
   , bzManager :: Manager
   }
 
-data BugzillaToken = BugzillaToken T.Text
+newtype BugzillaToken = BugzillaToken T.Text
 
 instance FromJSON BugzillaToken where
   parseJSON (Object v) = BugzillaToken <$> v .: "token"

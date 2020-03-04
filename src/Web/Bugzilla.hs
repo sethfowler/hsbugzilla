@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- | This package is designed to provide an easy-to-use, typesafe
 --   interface to querying Bugzilla from Haskell.
@@ -118,7 +116,7 @@ loginSession ctx user password = do
 -- | Creates an anonymous 'BugzillaSession'. Note that some content
 --   will be hidden by Bugzilla when you make queries in this state.
 anonymousSession :: BugzillaContext -> BugzillaSession
-anonymousSession ctx = AnonymousSession ctx
+anonymousSession = AnonymousSession
 
 intAsText :: Int -> T.Text
 intAsText = T.pack . show
@@ -202,7 +200,7 @@ getAttachment session aid = do
     []  -> return Nothing
     _   -> throw $ BugzillaUnexpectedValue
                    "Request for a single attachment returned multiple attachments"
-  
+
 -- | Get all attachments for a bug.
 getAttachments :: BugzillaSession -> BugId -> IO [Attachment]
 getAttachments session bid = do

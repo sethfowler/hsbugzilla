@@ -63,8 +63,8 @@ evalSearchExpr e = snd $ evalSearchExpr' 1 e
     evalExprGroup :: Int -> [SearchExpression] -> (Int, [QueryPart])
     evalExprGroup t es =
       let (subExprT, subExprQs) = foldl' evalSubExpr (t + 1, []) es
-          qs = (taggedQueryPart t 'f' "OP") :
-               (taggedQueryPart subExprT 'f' "CP") :
+          qs = taggedQueryPart t 'f' "OP" :
+               taggedQueryPart subExprT 'f' "CP" :
                subExprQs
       in (subExprT + 1, qs)
 
@@ -77,12 +77,12 @@ evalSearchExpr e = snd $ evalSearchExpr' 1 e
 
     evalSearchExpr' t (Or es) =
       let (groupT, groupQs) = evalExprGroup t es
-          qs = (taggedQueryPart t 'j' "OR") : groupQs
+          qs = taggedQueryPart t 'j' "OR" : groupQs
       in (groupT + 1, qs)
 
     evalSearchExpr' t (Not es) =
       let (groupT, groupQs) = evalSearchExpr' t es
-          qs = (taggedQueryPart t 'n' "1") : groupQs
+          qs = taggedQueryPart t 'n' "1" : groupQs
       in (groupT + 1, qs)
 
     evalSearchExpr' t (Term term) = (t + 1, evalSearchTerm t term)
