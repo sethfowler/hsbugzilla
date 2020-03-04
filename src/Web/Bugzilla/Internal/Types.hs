@@ -32,7 +32,6 @@ module Web.Bugzilla.Internal.Types
 , searchFieldName
 ) where
 
-import Control.Applicative
 import Control.Monad (MonadPlus, mzero)
 import Data.Aeson
 import Data.Aeson.Encode

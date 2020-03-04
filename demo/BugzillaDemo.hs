@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-import Control.Applicative
 import Control.Exception (bracket)
 import Control.Monad
 import Data.Maybe

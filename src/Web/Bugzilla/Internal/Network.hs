@@ -15,7 +15,6 @@ module Web.Bugzilla.Internal.Network
 ) where
 
 import Blaze.ByteString.Builder (toByteString)
-import Control.Applicative
 import Control.Exception (Exception, throw)
 import Control.Monad (mzero)
 import Control.Monad.IO.Class (liftIO)
