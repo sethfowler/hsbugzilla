@@ -96,7 +96,7 @@ closeBugzillaContext = closeManager . bzManager
 -- | Creates a 'BugzillaContext' and ensures that it will be closed
 --   automatically, even if an exception is thrown.
 withBugzillaContext :: BugzillaServer -> (BugzillaContext -> IO a) -> IO a
-withBugzillaContext server f = bracket (newBugzillaContext server) closeBugzillaContext f
+withBugzillaContext server = bracket (newBugzillaContext server) closeBugzillaContext
 
 -- | Attempts to create a logged-in 'BugzillaSession' using the
 --   provided username and password. Returns 'Nothing' if login
