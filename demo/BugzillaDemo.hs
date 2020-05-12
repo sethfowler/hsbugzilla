@@ -85,7 +85,7 @@ doRequests user session = do
 
   where
     showNeedinfo Bug {..} = do
-      let flags = filter hasNeedinfoFlag bugFlags
+      let flags = filter hasNeedinfoFlag $ fromMaybe [] bugFlags
       forM_ flags $ \flag ->
         putStrLn $ "[NEEDINFO] " ++ show bugId ++ ": " ++ show bugSummary
                 ++ " (" ++ show (flagSetter flag) ++ " " ++ show (flagCreationDate flag) ++ ")"
