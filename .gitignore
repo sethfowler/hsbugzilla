@@ -1,1 +1,5 @@
+# Cabal
 dist/
+# Stack
+.stack-work/
+/stack.yaml.lock
