@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -15,6 +16,10 @@ module Web.Bugzilla.Internal.Network
 ) where
 
 import Blaze.ByteString.Builder (toByteString)
+#if (defined(MIN_VERSION_base) && MIN_VERSION_base(4,8,0))
+#else
+import Control.Applicative ((<$>), (<*>))
+#endif
 import Control.Exception (Exception, throw)
 import Control.Monad (mzero)
 import Control.Monad.IO.Class (liftIO)
