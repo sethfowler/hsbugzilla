@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
@@ -32,6 +33,10 @@ module Web.Bugzilla.Internal.Types
 , searchFieldName
 ) where
 
+#if (defined(MIN_VERSION_base) && MIN_VERSION_base(4,8,0))
+#else
+import Control.Applicative ((<$>), (<*>))
+#endif
 import Control.Monad (MonadPlus, mzero)
 import Data.Aeson
 import Data.Aeson.Encode
