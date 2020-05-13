@@ -35,7 +35,7 @@ module Web.Bugzilla.Internal.Types
 
 #if (defined(MIN_VERSION_base) && MIN_VERSION_base(4,8,0))
 #else
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative (pure, (<$>), (<*>))
 #endif
 import Control.Monad (MonadPlus, mzero)
 import Data.Aeson
